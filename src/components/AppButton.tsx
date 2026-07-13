@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, minTouchSize, spacing, typography } from '../theme';
+import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
 
 type Props = {
   label: string;
@@ -11,6 +11,7 @@ type Props = {
 };
 
 export function AppButton({ label, onPress, disabled, loading, variant = 'primary' }: Props) {
+  const { colors } = useTheme();
   const isPrimary = variant === 'primary';
   const isDisabled = disabled || loading;
 
@@ -20,7 +21,8 @@ export function AppButton({ label, onPress, disabled, loading, variant = 'primar
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        isPrimary ? styles.primary : styles.secondary,
+        { backgroundColor: isPrimary ? colors.primary : colors.surface },
+        !isPrimary && { borderWidth: 1, borderColor: colors.border },
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
       ]}
@@ -28,7 +30,7 @@ export function AppButton({ label, onPress, disabled, loading, variant = 'primar
       {loading ? (
         <ActivityIndicator color={isPrimary ? colors.primaryText : colors.primary} />
       ) : (
-        <Text style={[styles.label, isPrimary ? styles.labelPrimary : styles.labelSecondary]}>
+        <Text style={[styles.label, { color: isPrimary ? colors.primaryText : colors.text }]}>
           {label}
         </Text>
       )}
@@ -39,19 +41,11 @@ export function AppButton({ label, onPress, disabled, loading, variant = 'primar
 const styles = StyleSheet.create({
   base: {
     minHeight: minTouchSize,
-    borderRadius: 10,
+    borderRadius: radius,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-  },
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  secondary: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   disabled: {
     opacity: 0.5,
@@ -60,13 +54,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   label: {
-    fontSize: typography.body,
-    fontWeight: '600',
-  },
-  labelPrimary: {
-    color: colors.primaryText,
-  },
-  labelSecondary: {
-    color: colors.text,
+    fontSize: typography.button,
+    fontFamily: fonts.bold,
   },
 });

@@ -11,9 +11,10 @@ import {
   type Player,
   type PlayerInput,
 } from '../../../src/db/supabase/players';
-import { colors, spacing, typography } from '../../../src/theme';
+import { fonts, spacing, typography, useTheme } from '../../../src/theme';
 
 export default function EditarJugadorScreen() {
+  const { colors } = useTheme();
   const { playerId } = useLocalSearchParams<{ playerId: string }>();
   const [player, setPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +57,7 @@ export default function EditarJugadorScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -64,14 +65,16 @@ export default function EditarJugadorScreen() {
 
   if (error || !player) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>{error ?? 'Jugador no encontrado.'}</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.error, { color: colors.danger }]}>
+          {error ?? 'Jugador no encontrado.'}
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: player.full_name }} />
       <PlayerForm
         submitLabel="Guardar cambios"
@@ -99,8 +102,8 @@ export default function EditarJugadorScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-  error: { fontSize: typography.body, color: colors.danger, textAlign: 'center', padding: spacing.lg },
+  container: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
   deleteContainer: { padding: spacing.lg, paddingTop: 0 },
 });

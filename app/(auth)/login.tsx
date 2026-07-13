@@ -5,9 +5,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../src/components/AppButton';
 import { AppTextInput } from '../../src/components/AppTextInput';
 import { sendOtp } from '../../src/db/supabase/auth';
-import { colors, spacing, typography } from '../../src/theme';
+import { fonts, spacing, typography, useTheme } from '../../src/theme';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +28,9 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Ingresar</Text>
-      <Text style={styles.label}>Tu número de teléfono</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Ingresar</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>Tu número de teléfono</Text>
       <AppTextInput
         value={phone}
         onChangeText={setPhone}
@@ -38,7 +39,7 @@ export default function LoginScreen() {
         autoComplete="tel"
         textContentType="telephoneNumber"
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
       <View style={styles.spacer} />
       <AppButton
         label="Enviar código"
@@ -51,9 +52,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, justifyContent: 'center' },
-  title: { fontSize: typography.heading, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
-  label: { fontSize: typography.label, color: colors.textMuted, marginBottom: spacing.xs },
-  error: { fontSize: typography.label, color: colors.danger, marginTop: spacing.sm },
+  container: { flex: 1, padding: spacing.lg, justifyContent: 'center' },
+  title: { fontSize: typography.screenTitle, fontFamily: fonts.bold, marginBottom: spacing.lg },
+  label: { fontSize: typography.caption, fontFamily: fonts.bold, marginBottom: spacing.xs },
+  error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.sm },
   spacer: { height: spacing.md },
 });

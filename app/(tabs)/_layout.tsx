@@ -1,30 +1,23 @@
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../src/hooks/useAuth';
 import { TeamProvider } from '../../src/hooks/useTeam';
-import { colors, typography } from '../../src/theme';
+import { fonts, typography, useTheme } from '../../src/theme';
 
-type IconName = keyof typeof Ionicons.glyphMap;
+type IconName = keyof typeof MaterialIcons.glyphMap;
 
-function TabIcon({
-  focused,
-  color,
-  outline,
-  filled,
-}: {
-  focused: boolean;
-  color: ColorValue;
-  outline: IconName;
-  filled: IconName;
-}) {
-  return <Ionicons name={focused ? filled : outline} size={26} color={color} />;
+// Guía de identidad: iconografía sólida/rellena (Material Icons Filled), un
+// solo color por ícono (activo/inactivo vía color, no cambio de forma).
+function TabIcon({ name, color }: { name: IconName; color: ColorValue }) {
+  return <MaterialIcons name={name} size={26} color={color} />;
 }
 
 export default function TabsLayout() {
   const { session, isLoading } = useAuth();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   if (isLoading) return null;
@@ -34,14 +27,18 @@ export default function TabsLayout() {
     <TeamProvider>
       <Tabs
         screenOptions={{
-          headerTitleStyle: { fontSize: typography.title },
+          headerTitleStyle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
-          tabBarLabelStyle: { fontSize: typography.label, fontWeight: '600' },
+          tabBarLabelStyle: { fontSize: typography.caption, fontFamily: fonts.bold },
           tabBarStyle: {
             height: 60 + insets.bottom,
             paddingTop: 8,
             paddingBottom: Math.max(insets.bottom, 8),
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
           },
         }}
       >
@@ -50,9 +47,7 @@ export default function TabsLayout() {
           options={{
             title: 'Asistencia',
             headerShown: false,
-            tabBarIcon: ({ focused, color }) => (
-              <TabIcon focused={focused} color={color} outline="clipboard-outline" filled="clipboard" />
-            ),
+            tabBarIcon: ({ color }) => <TabIcon name="how-to-reg" color={color} />,
           }}
         />
         <Tabs.Screen
@@ -60,27 +55,21 @@ export default function TabsLayout() {
           options={{
             title: 'Equipo',
             headerShown: false,
-            tabBarIcon: ({ focused, color }) => (
-              <TabIcon focused={focused} color={color} outline="people-outline" filled="people" />
-            ),
+            tabBarIcon: ({ color }) => <TabIcon name="groups" color={color} />,
           }}
         />
         <Tabs.Screen
           name="ejercicios/index"
           options={{
             title: 'Ejercicios',
-            tabBarIcon: ({ focused, color }) => (
-              <TabIcon focused={focused} color={color} outline="barbell-outline" filled="barbell" />
-            ),
+            tabBarIcon: ({ color }) => <TabIcon name="fitness-center" color={color} />,
           }}
         />
         <Tabs.Screen
           name="torneos/index"
           options={{
             title: 'Torneos',
-            tabBarIcon: ({ focused, color }) => (
-              <TabIcon focused={focused} color={color} outline="trophy-outline" filled="trophy" />
-            ),
+            tabBarIcon: ({ color }) => <TabIcon name="emoji-events" color={color} />,
           }}
         />
       </Tabs>

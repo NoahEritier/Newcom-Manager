@@ -1,12 +1,14 @@
 import { Stack } from 'expo-router';
 
-import { colors, typography } from '../../../src/theme';
+import { fonts, typography, useTheme } from '../../../src/theme';
 
 export default function EquipoLayout() {
+  const { colors } = useTheme();
   return (
     <Stack
       screenOptions={{
-        headerTitleStyle: { fontSize: typography.title },
+        headerTitleStyle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold },
+        headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         contentStyle: { backgroundColor: colors.background },
       }}

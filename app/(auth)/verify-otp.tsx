@@ -5,9 +5,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../src/components/AppButton';
 import { AppTextInput } from '../../src/components/AppTextInput';
 import { sendOtp, verifyOtp } from '../../src/db/supabase/auth';
-import { colors, spacing, typography } from '../../src/theme';
+import { fonts, spacing, typography, useTheme } from '../../src/theme';
 
 export default function VerifyOtpScreen() {
+  const { colors } = useTheme();
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,9 +44,11 @@ export default function VerifyOtpScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Verificar código</Text>
-      <Text style={styles.label}>Ingresá el código que te llegó por SMS al {phone}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Verificar código</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>
+        Ingresá el código que te llegó por SMS al {phone}
+      </Text>
       <AppTextInput
         value={code}
         onChangeText={setCode}
@@ -53,8 +56,10 @@ export default function VerifyOtpScreen() {
         keyboardType="number-pad"
         maxLength={6}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {resent && !error ? <Text style={styles.success}>Código reenviado.</Text> : null}
+      {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
+      {resent && !error ? (
+        <Text style={[styles.success, { color: colors.success }]}>Código reenviado.</Text>
+      ) : null}
       <View style={styles.spacer} />
       <AppButton
         label="Confirmar"
@@ -69,10 +74,10 @@ export default function VerifyOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, justifyContent: 'center' },
-  title: { fontSize: typography.heading, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
-  label: { fontSize: typography.body, color: colors.textMuted, marginBottom: spacing.md },
-  error: { fontSize: typography.label, color: colors.danger, marginTop: spacing.sm },
-  success: { fontSize: typography.label, color: colors.success, marginTop: spacing.sm },
+  container: { flex: 1, padding: spacing.lg, justifyContent: 'center' },
+  title: { fontSize: typography.screenTitle, fontFamily: fonts.bold, marginBottom: spacing.lg },
+  label: { fontSize: typography.body, fontFamily: fonts.regular, marginBottom: spacing.md },
+  error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.sm },
+  success: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.sm },
   spacer: { height: spacing.md },
 });

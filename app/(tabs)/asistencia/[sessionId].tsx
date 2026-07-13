@@ -5,7 +5,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { getSession, getRecordsForSession, setAttendance, type LocalSession } from '../../../src/db/local/attendance';
 import { getCachedPlayers, type CachedPlayer } from '../../../src/db/local/playersCache';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
-import { colors, minTouchSize, spacing, typography } from '../../../src/theme';
+import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
 
 type PresenceMap = Record<string, boolean | undefined>;
 
@@ -15,6 +15,7 @@ function formatDate(iso: string) {
 }
 
 export default function TomarAsistenciaScreen() {
+  const { colors } = useTheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const [session, setSession] = useState<LocalSession | null>(null);
   const [players, setPlayers] = useState<CachedPlayer[]>([]);
@@ -56,7 +57,7 @@ export default function TomarAsistenciaScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -64,25 +65,27 @@ export default function TomarAsistenciaScreen() {
 
   if (!session) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>No encontramos esta sesión.</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.error, { color: colors.danger }]}>No encontramos esta sesión.</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: formatDate(session.session_date) }} />
-      <View style={styles.syncBanner}>
+      <View style={[styles.syncBanner, { backgroundColor: colors.surface }]}>
         {isSyncing ? (
-          <Text style={styles.syncTextPending}>Sincronizando…</Text>
+          <Text style={[styles.syncText, { color: colors.textMuted }]}>Sincronizando…</Text>
         ) : pendingCount > 0 ? (
-          <Text style={styles.syncTextPending}>{pendingCount} cambios pendientes de subir</Text>
+          <Text style={[styles.syncText, { color: colors.textMuted }]}>
+            {pendingCount} cambios pendientes de subir
+          </Text>
         ) : (
-          <Text style={styles.syncTextOk}>Todo sincronizado</Text>
+          <Text style={[styles.syncText, { color: colors.success }]}>Todo sincronizado</Text>
         )}
         <Pressable onPress={syncNow} disabled={isSyncing}>
-          <Text style={styles.syncAction}>Sincronizar ahora</Text>
+          <Text style={[styles.syncAction, { color: colors.link }]}>Sincronizar ahora</Text>
         </Pressable>
       </View>
 
@@ -92,7 +95,7 @@ export default function TomarAsistenciaScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               No hay jugadores en el equipo todavía. Cargalos desde la tab Equipo.
             </Text>
           </View>
@@ -100,22 +103,40 @@ export default function TomarAsistenciaScreen() {
         renderItem={({ item }) => {
           const present = presence[item.id];
           return (
-            <View style={styles.row}>
-              <Text style={styles.rowName}>{item.full_name}</Text>
+            <View style={[styles.row, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.rowName, { color: colors.text }]}>{item.full_name}</Text>
               <View style={styles.pillRow}>
                 <Pressable
                   onPress={() => handleMark(item.id, true)}
-                  style={[styles.pill, present === true && styles.pillPresent]}
+                  style={[
+                    styles.pill,
+                    { borderColor: colors.border, backgroundColor: colors.background },
+                    present === true && { backgroundColor: colors.success, borderColor: colors.success },
+                  ]}
                 >
-                  <Text style={[styles.pillLabel, present === true && styles.pillLabelSelected]}>
+                  <Text
+                    style={[
+                      styles.pillLabel,
+                      { color: present === true ? colors.primaryText : colors.text },
+                    ]}
+                  >
                     Presente
                   </Text>
                 </Pressable>
                 <Pressable
                   onPress={() => handleMark(item.id, false)}
-                  style={[styles.pill, present === false && styles.pillAbsent]}
+                  style={[
+                    styles.pill,
+                    { borderColor: colors.border, backgroundColor: colors.background },
+                    present === false && { backgroundColor: colors.danger, borderColor: colors.danger },
+                  ]}
                 >
-                  <Text style={[styles.pillLabel, present === false && styles.pillLabelSelected]}>
+                  <Text
+                    style={[
+                      styles.pillLabel,
+                      { color: present === false ? colors.primaryText : colors.text },
+                    ]}
+                  >
                     Ausente
                   </Text>
                 </Pressable>
@@ -129,45 +150,37 @@ export default function TomarAsistenciaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-  error: { fontSize: typography.body, color: colors.danger, textAlign: 'center', padding: spacing.lg },
+  container: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
   syncBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     margin: spacing.lg,
     marginBottom: 0,
-    borderRadius: 10,
+    borderRadius: radius,
     padding: spacing.md,
   },
-  syncTextOk: { fontSize: typography.label, color: colors.success, fontWeight: '600' },
-  syncTextPending: { fontSize: typography.label, color: colors.textMuted, fontWeight: '600' },
-  syncAction: { fontSize: typography.label, color: colors.primary, fontWeight: '600' },
+  syncText: { fontSize: typography.caption, fontFamily: fonts.bold },
+  syncAction: { fontSize: typography.caption, fontFamily: fonts.bold },
   listContent: { padding: spacing.lg, gap: spacing.sm },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
-  emptyText: { fontSize: typography.body, color: colors.textMuted, textAlign: 'center' },
+  emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   row: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
-  rowName: { fontSize: typography.body, fontWeight: '600', color: colors.text },
+  rowName: { fontSize: typography.body, fontFamily: fonts.bold },
   pillRow: { flexDirection: 'row', gap: spacing.sm },
   pill: {
     flex: 1,
     minHeight: minTouchSize,
-    borderRadius: 10,
+    borderRadius: radius,
     borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
   },
-  pillPresent: { backgroundColor: colors.success, borderColor: colors.success },
-  pillAbsent: { backgroundColor: colors.danger, borderColor: colors.danger },
-  pillLabel: { fontSize: typography.label, fontWeight: '600', color: colors.text },
-  pillLabelSelected: { color: colors.primaryText },
+  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
 });

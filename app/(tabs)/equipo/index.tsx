@@ -5,7 +5,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { AppButton } from '../../../src/components/AppButton';
 import { listPlayers, type Player } from '../../../src/db/supabase/players';
 import { useTeam } from '../../../src/hooks/useTeam';
-import { colors, spacing, typography } from '../../../src/theme';
+import { fonts, spacing, typography, useTheme, type ThemeColors } from '../../../src/theme';
 
 const MEDICAL_LABEL: Record<Player['medical_status'], string> = {
   vigente: 'Apto vigente',
@@ -13,13 +13,14 @@ const MEDICAL_LABEL: Record<Player['medical_status'], string> = {
   unknown: 'Sin apto cargado',
 };
 
-const MEDICAL_COLOR: Record<Player['medical_status'], string> = {
-  vigente: colors.success,
-  vencido: colors.danger,
-  unknown: colors.textMuted,
-};
+function medicalColor(status: Player['medical_status'], colors: ThemeColors) {
+  if (status === 'vigente') return colors.success;
+  if (status === 'vencido') return colors.danger;
+  return colors.textMuted;
+}
 
 export default function EquipoScreen() {
+  const { colors } = useTheme();
   const { teamId, isLoading: teamLoading, error: teamError } = useTeam();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +48,7 @@ export default function EquipoScreen() {
 
   if (teamLoading || (loading && players.length === 0)) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -55,8 +56,8 @@ export default function EquipoScreen() {
 
   if (teamError || error) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>{teamError ?? error}</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.error, { color: colors.danger }]}>{teamError ?? error}</Text>
       </View>
     );
   }
@@ -65,7 +66,7 @@ export default function EquipoScreen() {
     <FlatList
       data={players}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[styles.listContent, { backgroundColor: colors.background }]}
       ListHeaderComponent={
         <View style={styles.header}>
           <AppButton label="+ Agregar jugador" onPress={() => router.push('/equipo/nuevo')} />
@@ -73,17 +74,19 @@ export default function EquipoScreen() {
       }
       ListEmptyComponent={
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Todavía no cargaste jugadores.</Text>
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+            Todavía no cargaste jugadores.
+          </Text>
         </View>
       }
       renderItem={({ item }) => (
         <Pressable
-          style={styles.row}
+          style={[styles.row, { borderBottomColor: colors.border }]}
           onPress={() => router.push({ pathname: '/equipo/[playerId]', params: { playerId: item.id } })}
         >
           <View style={styles.rowText}>
-            <Text style={styles.rowName}>{item.full_name}</Text>
-            <Text style={[styles.rowMedical, { color: MEDICAL_COLOR[item.medical_status] }]}>
+            <Text style={[styles.rowName, { color: colors.text }]}>{item.full_name}</Text>
+            <Text style={[styles.rowMedical, { color: medicalColor(item.medical_status, colors) }]}>
               {MEDICAL_LABEL[item.medical_status]}
             </Text>
           </View>
@@ -94,21 +97,20 @@ export default function EquipoScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-  listContent: { flexGrow: 1, backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  listContent: { flexGrow: 1 },
   header: { padding: spacing.lg },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
-  emptyText: { fontSize: typography.body, color: colors.textMuted, textAlign: 'center' },
+  emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   row: {
     minHeight: 64,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     justifyContent: 'center',
   },
   rowText: { gap: 2 },
-  rowName: { fontSize: typography.body, fontWeight: '600', color: colors.text },
-  rowMedical: { fontSize: typography.label },
-  error: { fontSize: typography.body, color: colors.danger, textAlign: 'center', padding: spacing.lg },
+  rowName: { fontSize: typography.body, fontFamily: fonts.bold },
+  rowMedical: { fontSize: typography.caption, fontFamily: fonts.regular },
+  error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
 });

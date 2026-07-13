@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../theme';
+import { fonts, spacing, typography, useTheme } from '../theme';
 
 type Props = {
   title: string;
@@ -8,10 +8,11 @@ type Props = {
 };
 
 export function PlaceholderScreen({ title, description }: Props) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.description, { color: colors.textMuted }]}>{description}</Text>
     </View>
   );
 }
@@ -19,18 +20,16 @@ export function PlaceholderScreen({ title, description }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: spacing.lg,
     justifyContent: 'center',
   },
   title: {
-    fontSize: typography.heading,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: typography.screenTitle,
+    fontFamily: fonts.bold,
     marginBottom: spacing.sm,
   },
   description: {
     fontSize: typography.body,
-    color: colors.textMuted,
+    fontFamily: fonts.regular,
   },
 });

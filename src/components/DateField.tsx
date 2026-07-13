@@ -2,7 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, minTouchSize, spacing, typography } from '../theme';
+import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
 
 type Props = {
   value: string | null; // formato 'YYYY-MM-DD'
@@ -16,18 +16,22 @@ function formatDate(iso: string) {
 }
 
 export function DateField({ value, onChange, placeholder = 'Seleccionar fecha' }: Props) {
+  const { colors } = useTheme();
   const [show, setShow] = useState(false);
 
   return (
     <View>
-      <Pressable style={styles.field} onPress={() => setShow(true)}>
-        <Text style={value ? styles.value : styles.placeholder}>
+      <Pressable
+        style={[styles.field, { borderColor: colors.border, backgroundColor: colors.background }]}
+        onPress={() => setShow(true)}
+      >
+        <Text style={[styles.text, { color: value ? colors.text : colors.textMuted }]}>
           {value ? formatDate(value) : placeholder}
         </Text>
       </Pressable>
       {value ? (
         <Pressable style={styles.clearButton} onPress={() => onChange(null)}>
-          <Text style={styles.clearLabel}>Quitar fecha</Text>
+          <Text style={[styles.clearLabel, { color: colors.link }]}>Quitar fecha</Text>
         </Pressable>
       ) : null}
       {show ? (
@@ -51,26 +55,20 @@ const styles = StyleSheet.create({
   field: {
     minHeight: minTouchSize,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radius,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
-    backgroundColor: colors.background,
   },
-  value: {
+  text: {
     fontSize: typography.body,
-    color: colors.text,
-  },
-  placeholder: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+    fontFamily: fonts.regular,
   },
   clearButton: {
     minHeight: minTouchSize,
     justifyContent: 'center',
   },
   clearLabel: {
-    fontSize: typography.label,
-    color: colors.primary,
+    fontSize: typography.caption,
+    fontFamily: fonts.bold,
   },
 });

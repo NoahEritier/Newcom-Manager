@@ -7,7 +7,7 @@ import { getOrCreateSessionForDate, listRecentSessions, type SessionSummary } fr
 import { signOut } from '../../../src/db/supabase/auth';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
 import { useTeam } from '../../../src/hooks/useTeam';
-import { colors, spacing, typography } from '../../../src/theme';
+import { fonts, radius, spacing, typography, useTheme } from '../../../src/theme';
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -19,6 +19,7 @@ function formatDate(iso: string) {
 }
 
 export default function AsistenciaScreen() {
+  const { colors } = useTheme();
   const { teamId, isLoading: teamLoading } = useTeam();
   const { isSyncing, pendingCount, error: syncError, syncNow } = useAttendanceSync(teamId);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -51,7 +52,7 @@ export default function AsistenciaScreen() {
 
   if (teamLoading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -61,22 +62,24 @@ export default function AsistenciaScreen() {
     <FlatList
       data={sessions}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[styles.listContent, { backgroundColor: colors.background }]}
       ListHeaderComponent={
         <View style={styles.header}>
-          <View style={styles.syncBanner}>
+          <View style={[styles.syncBanner, { backgroundColor: colors.surface }]}>
             {isSyncing ? (
-              <Text style={styles.syncTextPending}>Sincronizando…</Text>
+              <Text style={[styles.syncText, { color: colors.textMuted }]}>Sincronizando…</Text>
             ) : pendingCount > 0 ? (
-              <Text style={styles.syncTextPending}>{pendingCount} cambios pendientes de subir</Text>
+              <Text style={[styles.syncText, { color: colors.textMuted }]}>
+                {pendingCount} cambios pendientes de subir
+              </Text>
             ) : (
-              <Text style={styles.syncTextOk}>Todo sincronizado</Text>
+              <Text style={[styles.syncText, { color: colors.success }]}>Todo sincronizado</Text>
             )}
             <Pressable onPress={syncNow} disabled={isSyncing}>
-              <Text style={styles.syncAction}>Sincronizar ahora</Text>
+              <Text style={[styles.syncAction, { color: colors.link }]}>Sincronizar ahora</Text>
             </Pressable>
           </View>
-          {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
+          {syncError ? <Text style={[styles.error, { color: colors.danger }]}>{syncError}</Text> : null}
 
           <AppButton
             label="Tomar asistencia de hoy"
@@ -84,23 +87,25 @@ export default function AsistenciaScreen() {
             loading={startingToday}
           />
 
-          <Text style={styles.sectionTitle}>Sesiones recientes</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Sesiones recientes</Text>
         </View>
       }
       ListEmptyComponent={
         !loadingSessions ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Todavía no tomaste asistencia.</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Todavía no tomaste asistencia.
+            </Text>
           </View>
         ) : null
       }
       renderItem={({ item }) => (
         <Pressable
-          style={styles.row}
+          style={[styles.row, { borderBottomColor: colors.border }]}
           onPress={() => router.push({ pathname: '/asistencia/[sessionId]', params: { sessionId: item.id } })}
         >
-          <Text style={styles.rowDate}>{formatDate(item.session_date)}</Text>
-          <Text style={styles.rowSummary}>
+          <Text style={[styles.rowDate, { color: colors.text }]}>{formatDate(item.session_date)}</Text>
+          <Text style={[styles.rowSummary, { color: colors.textMuted }]}>
             {item.present_count} presentes · {item.absent_count} ausentes
             {item.sync_status !== 'synced' ? ' · sin subir' : ''}
           </Text>
@@ -116,34 +121,31 @@ export default function AsistenciaScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-  listContent: { flexGrow: 1, backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  listContent: { flexGrow: 1 },
   header: { padding: spacing.lg, gap: spacing.md },
   syncBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: radius,
     padding: spacing.md,
   },
-  syncTextOk: { fontSize: typography.label, color: colors.success, fontWeight: '600' },
-  syncTextPending: { fontSize: typography.label, color: colors.textMuted, fontWeight: '600' },
-  syncAction: { fontSize: typography.label, color: colors.primary, fontWeight: '600' },
-  error: { fontSize: typography.label, color: colors.danger },
-  sectionTitle: { fontSize: typography.title, fontWeight: '700', color: colors.text, marginTop: spacing.sm },
+  syncText: { fontSize: typography.caption, fontFamily: fonts.bold },
+  syncAction: { fontSize: typography.caption, fontFamily: fonts.bold },
+  error: { fontSize: typography.caption, fontFamily: fonts.regular },
+  sectionTitle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold, marginTop: spacing.sm },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
-  emptyText: { fontSize: typography.body, color: colors.textMuted, textAlign: 'center' },
+  emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   row: {
     minHeight: 64,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     justifyContent: 'center',
     gap: 2,
   },
-  rowDate: { fontSize: typography.body, fontWeight: '600', color: colors.text },
-  rowSummary: { fontSize: typography.label, color: colors.textMuted },
+  rowDate: { fontSize: typography.body, fontFamily: fonts.bold },
+  rowSummary: { fontSize: typography.caption, fontFamily: fonts.regular },
   footer: { padding: spacing.lg },
 });

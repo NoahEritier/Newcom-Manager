@@ -4,14 +4,15 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { PlayerForm } from '../../../src/components/PlayerForm';
 import { createPlayer, type PlayerInput } from '../../../src/db/supabase/players';
 import { useTeam } from '../../../src/hooks/useTeam';
-import { colors, spacing, typography } from '../../../src/theme';
+import { fonts, spacing, typography, useTheme } from '../../../src/theme';
 
 export default function NuevoJugadorScreen() {
+  const { colors } = useTheme();
   const { teamId, isLoading } = useTeam();
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -19,8 +20,8 @@ export default function NuevoJugadorScreen() {
 
   if (!teamId) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>No pudimos encontrar tu equipo.</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.error, { color: colors.danger }]}>No pudimos encontrar tu equipo.</Text>
       </View>
     );
   }
@@ -34,6 +35,6 @@ export default function NuevoJugadorScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-  error: { fontSize: typography.body, color: colors.danger, textAlign: 'center', padding: spacing.lg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
 });
