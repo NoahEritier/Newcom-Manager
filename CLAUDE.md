@@ -184,5 +184,17 @@ del proyecto Supabase.
   (a futuro, no usar todavía). `.npmrc` con `legacy-peer-deps=true` (necesario
   por conflicto de peer deps entre `expo-router`/`@expo/ui` y `react-dom`, tanto
   local como en el builder remoto de EAS).
-- Próxima feature a implementar: **Gestión de equipo** (alta/edición/baja de
-  jugadores, sección 3.2 del CLAUDE.md).
+- **Feature 2 (Gestión de equipo) terminada y validada en dispositivo real:**
+  alta/edición/baja (lógica, `is_active=false`) de jugadores, con nombre,
+  teléfono, WhatsApp, fecha de nacimiento, apto médico (vigente/vencido/sin
+  dato) + vencimiento, notas, y confirmación obligatoria antes de borrar.
+  No hay pantalla de gestión de equipos todavía: se crea un equipo "Mi equipo"
+  automático la primera vez que el coach entra a la tab (plan free = 1 equipo).
+  Requirió agregar `@react-native-community/datetimepicker` (módulo nativo,
+  implicó un rebuild del development client — los cambios JS/UI normales NO
+  requieren reinstalar el APK, solo cambios nativos o de config).
+- Próxima feature a implementar: **Asistencia** (sección 3.3). Esta es la que
+  el CLAUDE.md pide que funcione 100% offline — antes de escribir código hay
+  que proponer y aprobar el diseño de la cola de sync y el esquema `_local`
+  (sección 2), todavía no implementado (Auth y Equipo funcionan online-first,
+  contra Supabase directo).
