@@ -193,8 +193,18 @@ del proyecto Supabase.
   Requirió agregar `@react-native-community/datetimepicker` (módulo nativo,
   implicó un rebuild del development client — los cambios JS/UI normales NO
   requieren reinstalar el APK, solo cambios nativos o de config).
-- Próxima feature a implementar: **Asistencia** (sección 3.3). Esta es la que
-  el CLAUDE.md pide que funcione 100% offline — antes de escribir código hay
-  que proponer y aprobar el diseño de la cola de sync y el esquema `_local`
-  (sección 2), todavía no implementado (Auth y Equipo funcionan online-first,
-  contra Supabase directo).
+- **Feature 3 (Asistencia) implementada con offline-first real:** cola de sync
+  propia sobre `expo-sqlite` (no WatermelonDB — se prefirió por más simple y
+  liviano, sin config nativa extra). Tablas locales `players_cache` (cache de
+  lectura), `attendance_sessions_local` y `attendance_records_local` (con
+  `sync_status`/`updated_at` para push, y pull con last-write-wins por fila).
+  Solo Asistencia funciona offline; Equipo/Torneos/Ejercicios siguen
+  online-first a propósito (no era requisito). Sync dispara con `NetInfo` al
+  reconectar + botón manual, con indicador de "pendientes de subir" en pantalla.
+  Pendiente de validar en dispositivo real (crear sesión, marcar presente/
+  ausente en modo avión, reconectar y confirmar que sincroniza).
+- Tab bar con íconos (`@expo/vector-icons`, ya venía linkeado vía `expo-font`
+  que usa `expo-router` internamente — no requirió rebuild nativo) y respeta
+  safe area (`useSafeAreaInsets`).
+- Próximo paso: validar Asistencia en dispositivo real (offline incluido) y
+  después seguir con **Ejercicios** (sección 3.4).
