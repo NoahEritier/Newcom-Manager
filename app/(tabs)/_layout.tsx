@@ -59,16 +59,18 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="ejercicios/index"
+          name="ejercicios"
           options={{
             title: 'Ejercicios',
+            headerShown: false,
             tabBarIcon: ({ color }) => <TabIcon name="fitness-center" color={color} />,
           }}
         />
         <Tabs.Screen
-          name="torneos/index"
+          name="torneos"
           options={{
             title: 'Torneos',
+            headerShown: false,
             tabBarIcon: ({ color }) => <TabIcon name="emoji-events" color={color} />,
           }}
         />

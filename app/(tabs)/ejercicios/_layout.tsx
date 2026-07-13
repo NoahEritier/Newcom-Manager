@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 import { fonts, typography, useTheme } from '../../../src/theme';
 
-export default function AsistenciaLayout() {
+export default function EjerciciosLayout() {
   const { colors } = useTheme();
   return (
     <Stack
@@ -13,9 +13,9 @@ export default function AsistenciaLayout() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Asistencia' }} />
-      <Stack.Screen name="[sessionId]" options={{ title: 'Tomar asistencia' }} />
-      <Stack.Screen name="rutina/[sessionId]" options={{ title: 'Rutina de hoy' }} />
+      <Stack.Screen name="index" options={{ title: 'Ejercicios' }} />
+      <Stack.Screen name="nuevo" options={{ title: 'Nuevo ejercicio' }} />
+      <Stack.Screen name="[exerciseId]" options={{ title: 'Ejercicio' }} />
     </Stack>
   );
 }

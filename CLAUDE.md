@@ -203,8 +203,24 @@ del proyecto Supabase.
   reconectar + botón manual, con indicador de "pendientes de subir" en pantalla.
   Pendiente de validar en dispositivo real (crear sesión, marcar presente/
   ausente en modo avión, reconectar y confirmar que sincroniza).
-- Tab bar con íconos (`@expo/vector-icons`, ya venía linkeado vía `expo-font`
-  que usa `expo-router` internamente — no requirió rebuild nativo) y respeta
-  safe area (`useSafeAreaInsets`).
-- Próximo paso: validar Asistencia en dispositivo real (offline incluido) y
-  después seguir con **Ejercicios** (sección 3.4).
+- **Feature 3 (Asistencia) validada en dispositivo real**, incluido offline
+  (modo avión + reconexión).
+- **Identidad visual aplicada** (guía de diseño del usuario): paleta azul
+  marino/ámbar con modo oscuro automático (`useColorScheme`), tipografía
+  Atkinson Hyperlegible en toda la app, Material Icons Filled en la tab bar.
+  Ícono de app y splash screen generados a partir de un asset de pelota
+  provisto por el usuario (ver `src/theme/index.ts` para la paleta completa).
+- **Feature 4 (Ejercicios) implementada:** biblioteca de ejercicios (título,
+  descripción, link de imagen/video) con alta/edición/baja (delete físico,
+  `exercises` no tiene `is_active` en el esquema). Armado de rutinas por
+  sesión de asistencia (`routines`/`routine_exercises`, online-only — requiere
+  que la sesión ya esté sincronizada, dado que la FK apunta a
+  `attendance_sessions` remota).
+- **Feature 5 (Torneos) implementada:** alta/edición/baja de torneos (fecha,
+  rival, lugar, resultado).
+- **Feature 6 (WhatsApp) implementada:** botón "Enviar alerta" en Torneos y
+  "Avisar entrenamiento" en Asistencia, vía `wa.me` con mensaje pre-cargado
+  (sin Business API, el coach elige el chat/grupo destino).
+- Próximo paso: **Google Calendar** (sección 3.7, última prioridad del MVP) —
+  pendiente de proponer el alcance de la integración OAuth antes de
+  implementar.

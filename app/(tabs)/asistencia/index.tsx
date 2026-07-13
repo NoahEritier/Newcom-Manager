@@ -8,6 +8,7 @@ import { signOut } from '../../../src/db/supabase/auth';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
 import { useTeam } from '../../../src/hooks/useTeam';
 import { fonts, radius, spacing, typography, useTheme } from '../../../src/theme';
+import { openWhatsAppMessage } from '../../../src/utils/whatsapp';
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -16,6 +17,11 @@ function todayIso() {
 function formatDate(iso: string) {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+
+function handleShareTraining() {
+  const message = `Entrenamos hoy (${formatDate(todayIso())}). ¡Te esperamos!`;
+  openWhatsAppMessage(message);
 }
 
 export default function AsistenciaScreen() {
@@ -85,6 +91,11 @@ export default function AsistenciaScreen() {
             label="Tomar asistencia de hoy"
             onPress={handleStartToday}
             loading={startingToday}
+          />
+          <AppButton
+            label="Avisar entrenamiento por WhatsApp"
+            variant="secondary"
+            onPress={handleShareTraining}
           />
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Sesiones recientes</Text>

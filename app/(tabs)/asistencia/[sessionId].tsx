@@ -1,7 +1,8 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton } from '../../../src/components/AppButton';
 import { getSession, getRecordsForSession, setAttendance, type LocalSession } from '../../../src/db/local/attendance';
 import { getCachedPlayers, type CachedPlayer } from '../../../src/db/local/playersCache';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
@@ -89,6 +90,22 @@ export default function TomarAsistenciaScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.routineButtonContainer}>
+        <AppButton
+          label="Rutina de hoy"
+          variant="secondary"
+          disabled={session.sync_status !== 'synced'}
+          onPress={() =>
+            router.push({ pathname: '/asistencia/rutina/[sessionId]', params: { sessionId: session.id } })
+          }
+        />
+        {session.sync_status !== 'synced' ? (
+          <Text style={[styles.routineHint, { color: colors.textMuted }]}>
+            Sincronizá la sesión para poder armar la rutina.
+          </Text>
+        ) : null}
+      </View>
+
       <FlatList
         data={players}
         keyExtractor={(item) => item.id}
@@ -164,6 +181,8 @@ const styles = StyleSheet.create({
   },
   syncText: { fontSize: typography.caption, fontFamily: fonts.bold },
   syncAction: { fontSize: typography.caption, fontFamily: fonts.bold },
+  routineButtonContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.xs },
+  routineHint: { fontSize: typography.caption, fontFamily: fonts.regular },
   listContent: { padding: spacing.lg, gap: spacing.sm },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
