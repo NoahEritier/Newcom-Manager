@@ -9,11 +9,20 @@ import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from '../src/hooks/useAuth';
+import { ThemeModeProvider } from '../src/hooks/useThemePreference';
 import { useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
+  return (
+    <ThemeModeProvider>
+      <RootLayoutInner />
+    </ThemeModeProvider>
+  );
+}
+
+function RootLayoutInner() {
   const { isDark } = useTheme();
   const [fontsLoaded] = useFonts({
     AtkinsonHyperlegible_400Regular,

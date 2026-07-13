@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useThemeMode } from '../hooks/useThemePreference';
 
 // Guía de identidad visual Newcom Manager — ver documento de referencia.
 // Ámbar (accent) es SOLO decorativo/large-text: nunca como color de texto de
@@ -35,8 +35,8 @@ const darkColors = {
 export type ThemeColors = Record<keyof typeof lightColors, string>;
 
 export function useTheme(): { colors: ThemeColors; isDark: boolean } {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { mode } = useThemeMode();
+  const isDark = mode === 'dark';
   return { colors: isDark ? darkColors : lightColors, isDark };
 }
 
