@@ -221,6 +221,13 @@ del proyecto Supabase.
 - **Feature 6 (WhatsApp) implementada:** botón "Enviar alerta" en Torneos y
   "Avisar entrenamiento" en Asistencia, vía `wa.me` con mensaje pre-cargado
   (sin Business API, el coach elige el chat/grupo destino).
-- Próximo paso: **Google Calendar** (sección 3.7, última prioridad del MVP) —
-  pendiente de proponer el alcance de la integración OAuth antes de
-  implementar.
+- **Google Calendar (sección 3.7) pausada a propósito**: alcance ya propuesto
+  (sync one-way app→Calendar, solo torneos + opcionalmente entrenamientos,
+  OAuth con scope `calendar.events`) y aprobado por el usuario, pero requiere
+  que el usuario cree un proyecto en Google Cloud Console + credenciales OAuth
+  antes de poder implementarla — se retoma cuando las tenga. Es la feature de
+  menor prioridad del MVP.
+- **Estado del MVP: features 1-6 completas** (Auth, Equipo, Asistencia,
+  Ejercicios+Rutinas, Torneos, WhatsApp). Falta: Google Calendar (bloqueada
+  por credenciales externas), y probar todo en dispositivo real de punta a
+  punta antes de armar el build `preview` para el piloto.
