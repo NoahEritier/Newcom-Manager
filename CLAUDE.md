@@ -165,12 +165,24 @@ del proyecto Supabase.
 
 ## 9. Estado del proyecto
 
-- Proyecto Expo + TypeScript creado (`create-expo-app`, template blank-typescript).
-- **Pendiente/hallazgo:** el directorio no tiene un `.git` propio — heredaba un
-  repositorio git cuya raíz está muy por encima en el árbol de carpetas (aparenta
-  ser la raíz del disco). Antes de cualquier commit hay que resolver esto (crear un
-  `.git` aislado en `newcom-manager/`).
-- Pendiente: estructura de carpetas (`src/db`, `src/sync`, `src/components`, etc.),
-  instalación de Expo Router / Supabase client / WatermelonDB, configuración de
-  `eas.json` (profile `preview` + EAS Update), y credenciales reales de Supabase
-  (pedir al usuario, no inventar).
+- Scaffolding completo: Expo + TypeScript, Expo Router (grupos `(auth)`/`(tabs)`),
+  estructura de `src/` (`db`, `sync`, `components`, `hooks`, `theme`, `utils`).
+  Repo git propio y aislado (ya no hereda el `.git` de nivel superior), remote a
+  `https://github.com/NoahEritier/Newcom-Manager.git`.
+- Proyecto Supabase real conectado (`.env`, gitignoreado). Migración inicial
+  (`supabase/migrations/0001_init.sql`) corrida por el usuario: 9 tablas + RLS +
+  trigger que crea el `coach` automáticamente al confirmarse el signup.
+- **Feature 1 (Auth) terminada y validada en dispositivo real:** login por
+  teléfono + OTP vía Twilio Verify, pantallas conectadas de verdad a Supabase,
+  sesión persistida (`AsyncStorage`) con auto-refresh, logout. Cuenta de Twilio
+  en modo trial — solo manda SMS a números en "Verified Caller IDs".
+- Proyecto EAS creado (`@eritiernoah/newcom-manager`), logueado como
+  `eritiernoah`. `eas.json` con perfiles `development` (dev client, para seguir
+  developeando en dispositivo real sin depender de que Expo Go tenga la misma
+  versión de SDK — fue necesario porque Expo Go de Play Store iba atrasado
+  respecto al SDK 57 del proyecto), `preview` (APK piloto) y `production`
+  (a futuro, no usar todavía). `.npmrc` con `legacy-peer-deps=true` (necesario
+  por conflicto de peer deps entre `expo-router`/`@expo/ui` y `react-dom`, tanto
+  local como en el builder remoto de EAS).
+- Próxima feature a implementar: **Gestión de equipo** (alta/edición/baja de
+  jugadores, sección 3.2 del CLAUDE.md).
