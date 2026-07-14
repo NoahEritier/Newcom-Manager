@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton } from '../../../src/components/AppButton';
-import { AppTextInput } from '../../../src/components/AppTextInput';
-import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
+import { AppButton } from '../../src/components/AppButton';
+import { AppTextInput } from '../../src/components/AppTextInput';
+import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../src/theme';
 
 type Phase = 'config' | 'playing' | 'finished';
 

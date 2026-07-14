@@ -3,6 +3,7 @@ import { Redirect, Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HeaderActions } from '../../src/components/HeaderActions';
 import { useAuth } from '../../src/hooks/useAuth';
 import { TeamProvider } from '../../src/hooks/useTeam';
 import { fonts, typography, useTheme } from '../../src/theme';
@@ -42,6 +43,7 @@ export default function TabsLayout() {
           },
         }}
       >
+        <Tabs.Screen name="index" options={{ href: null }} />
         <Tabs.Screen
           name="asistencia"
           options={{
@@ -72,6 +74,14 @@ export default function TabsLayout() {
             title: 'Torneos',
             headerShown: false,
             tabBarIcon: ({ color }) => <TabIcon name="emoji-events" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="anotador"
+          options={{
+            title: 'Anotador',
+            headerRight: () => <HeaderActions />,
+            tabBarIcon: ({ color }) => <TabIcon name="scoreboard" color={color} />,
           }}
         />
       </Tabs>
