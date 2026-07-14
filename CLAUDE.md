@@ -224,10 +224,18 @@ del proyecto Supabase.
   Se vinculan a sesiones de asistencia vía `session_routines`
   (many-to-many) — requiere que la sesión ya esté sincronizada, dado que la
   FK apunta a `attendance_sessions` remota.
-- **Feature 5 (Torneos) ampliada:** hora, local/visitante, dirección (con
-  botón "Abrir en Maps"), marcador propio/rival con resultado derivado
-  en el cliente (no se duplica en la base), resumen de temporada
-  (ganados/perdidos/empatados), filtro próximos/pasados.
+- **Feature 5 (Torneos) restructurada:** se separó "torneo" (evento, puede
+  durar varios días y agrupar varios partidos — título, fechas, lugar,
+  equipos participantes, tarifa, si está pago, de dónde sale la plata,
+  asistentes seleccionables de la lista de jugadores) de "partido" (uno
+  solo, con fecha/hora/rival/lugar/dirección/marcador — puede pertenecer a
+  un torneo o ser suelto/aislado). Tabla `tournaments` (evento),
+  `matches` (partido, ex-`tournaments`), `tournament_attendees` (many-to-many
+  con `players`). Maps para dirección, resultado derivado en el cliente
+  (no se duplica en la base), resumen de temporada, filtro próximos/pasados.
+  Se agregó también un **Anotador** (herramienta suelta de puntaje por
+  sets, sets/puntos configurables, sin persistencia — solo para seguir el
+  partido en vivo en la cancha).
 - **Feature 6 (WhatsApp) implementada:** alertas pre-cargadas (`wa.me`) en
   Torneos (convocatoria), Asistencia (aviso de entrenamiento) y Equipo
   (individual desde la ficha del jugador + grupal desde la lista).
@@ -251,13 +259,15 @@ del proyecto Supabase.
   que el usuario cree un proyecto en Google Cloud Console + credenciales OAuth
   antes de poder implementarla — se retoma cuando las tenga. Es la feature de
   menor prioridad del MVP.
-- **Migración 0002 + 0002b corridas en Supabase**: ampliación de esquema
-  (teams, players, attendance_sessions/records, exercises, routines +
-  session_routines nueva, tournaments) según la spec funcional de pantallas
-  del usuario. La restructuración de `routines` (de "1 por sesión" a
-  biblioteca reutilizable) tuvo un incidente de migración parcial que dejó
-  `routines`/`routine_exercises` sin políticas RLS por un rato — resuelto con
-  0002b_fix_routines_rls.sql (idempotente, seguro de re-correr).
+- **Migraciones 0002, 0002b y 0003 corridas en Supabase**: ampliación de
+  esquema (teams, players, attendance_sessions/records, exercises, routines +
+  session_routines nueva, tournaments/matches/tournament_attendees) según la
+  spec funcional de pantallas del usuario. La restructuración de `routines`
+  (de "1 por sesión" a biblioteca reutilizable) tuvo un incidente de
+  migración parcial que dejó `routines`/`routine_exercises` sin políticas RLS
+  por un rato — resuelto con 0002b_fix_routines_rls.sql (idempotente, seguro
+  de re-correr). 0003 separó `tournaments` (ahora el evento/torneo) de
+  `matches` (ex-`tournaments`, ahora el partido individual).
 - **Estado del MVP: definido por el usuario como "completo cuando estas
   funcionalidades estén funcionando correctamente"** (la spec funcional de
   pantallas completa, no solo las features 1-6 originales). Falta: Google

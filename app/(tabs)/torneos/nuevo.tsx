@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { TournamentForm } from '../../../src/components/TournamentForm';
+import { TournamentEventForm } from '../../../src/components/TournamentEventForm';
 import { createTournament, type TournamentInput } from '../../../src/db/supabase/tournaments';
 import { useTeam } from '../../../src/hooks/useTeam';
 import { fonts, spacing, typography, useTheme } from '../../../src/theme';
@@ -27,11 +27,11 @@ export default function NuevoTorneoScreen() {
   }
 
   async function handleSubmit(input: TournamentInput) {
-    await createTournament(teamId as string, input);
-    router.back();
+    const tournamentId = await createTournament(teamId as string, input);
+    router.replace({ pathname: '/torneos/[tournamentId]', params: { tournamentId } });
   }
 
-  return <TournamentForm submitLabel="Guardar torneo" onSubmit={handleSubmit} />;
+  return <TournamentEventForm submitLabel="Guardar torneo" onSubmit={handleSubmit} />;
 }
 
 const styles = StyleSheet.create({

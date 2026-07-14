@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { HomeAway, TournamentInput } from '../db/supabase/tournaments';
+import type { HomeAway, MatchInput } from '../db/supabase/matches';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
 import { deriveOutcome, OUTCOME_LABEL } from '../utils/tournamentResult';
 import { AppButton } from './AppButton';
@@ -9,9 +9,13 @@ import { AppTextInput } from './AppTextInput';
 import { DateField } from './DateField';
 import { TimeField } from './TimeField';
 
+// tournament_id no se edita acá: lo fija la pantalla que llama a este
+// formulario (partido suelto = null, partido de un torneo = el id del torneo).
+type MatchFormValue = Omit<MatchInput, 'tournament_id'>;
+
 type Props = {
-  initialValue?: TournamentInput;
-  onSubmit: (input: TournamentInput) => Promise<void>;
+  initialValue?: MatchFormValue;
+  onSubmit: (input: MatchFormValue) => Promise<void>;
   submitLabel: string;
 };
 
@@ -24,7 +28,7 @@ const HOME_AWAY_OPTIONS: { value: HomeAway; label: string }[] = [
   { value: 'visitante', label: 'Visitante' },
 ];
 
-export function TournamentForm({ initialValue, onSubmit, submitLabel }: Props) {
+export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
   const { colors } = useTheme();
   const [matchDate, setMatchDate] = useState<string | null>(initialValue?.match_date ?? todayIso());
   const [matchTime, setMatchTime] = useState<string | null>(initialValue?.match_time ?? null);

@@ -18,6 +18,10 @@ export default function TorneosLayout() {
       <Stack.Screen name="index" options={{ title: 'Torneos' }} />
       <Stack.Screen name="nuevo" options={{ title: 'Nuevo torneo' }} />
       <Stack.Screen name="[tournamentId]" options={{ title: 'Torneo' }} />
+      <Stack.Screen name="partidos" options={{ title: 'Partidos sueltos' }} />
+      <Stack.Screen name="partido/nuevo" options={{ title: 'Nuevo partido' }} />
+      <Stack.Screen name="partido/[matchId]" options={{ title: 'Partido' }} />
+      <Stack.Screen name="anotador" options={{ title: 'Anotador' }} />
     </Stack>
   );
 }

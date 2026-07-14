@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
+import { listAllMatches } from '../../../src/db/supabase/matches';
 import { listTournaments, type Tournament } from '../../../src/db/supabase/tournaments';
 import { useTeam } from '../../../src/hooks/useTeam';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
@@ -22,6 +23,7 @@ export default function TorneosScreen() {
   const { colors } = useTheme();
   const { teamId, isLoading: teamLoading, error: teamError } = useTeam();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [summary, setSummary] = useState({ won: 0, lost: 0, drawn: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('proximos');
@@ -31,7 +33,21 @@ export default function TorneosScreen() {
     setLoading(true);
     setError(null);
     try {
-      setTournaments(await listTournaments(teamId));
+      const [tournamentList, matches] = await Promise.all([
+        listTournaments(teamId),
+        listAllMatches(teamId),
+      ]);
+      setTournaments(tournamentList);
+      let won = 0;
+      let lost = 0;
+      let drawn = 0;
+      for (const m of matches) {
+        if (m.score_own === null || m.score_opponent === null) continue;
+        if (m.score_own > m.score_opponent) won++;
+        else if (m.score_own < m.score_opponent) lost++;
+        else drawn++;
+      }
+      setSummary({ won, lost, drawn });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos cargar los torneos.');
     } finally {
@@ -48,22 +64,16 @@ export default function TorneosScreen() {
   const filtered = useMemo(() => {
     const today = todayIso();
     return tournaments
-      .filter((t) => (filter === 'proximos' ? t.match_date >= today : t.match_date < today))
-      .sort((a, b) => (filter === 'proximos' ? a.match_date.localeCompare(b.match_date) : b.match_date.localeCompare(a.match_date)));
+      .filter((t) => {
+        const relevantDate = t.end_date ?? t.start_date;
+        return filter === 'proximos' ? relevantDate >= today : relevantDate < today;
+      })
+      .sort((a, b) =>
+        filter === 'proximos'
+          ? a.start_date.localeCompare(b.start_date)
+          : b.start_date.localeCompare(a.start_date)
+      );
   }, [tournaments, filter]);
-
-  const summary = useMemo(() => {
-    let won = 0;
-    let lost = 0;
-    let drawn = 0;
-    for (const t of tournaments) {
-      if (t.score_own === null || t.score_opponent === null) continue;
-      if (t.score_own > t.score_opponent) won++;
-      else if (t.score_own < t.score_opponent) lost++;
-      else drawn++;
-    }
-    return { won, lost, drawn };
-  }, [tournaments]);
 
   if (teamLoading || (loading && tournaments.length === 0)) {
     return (
@@ -89,6 +99,22 @@ export default function TorneosScreen() {
       ListHeaderComponent={
         <View style={styles.header}>
           <AppButton label="+ Agregar torneo" onPress={() => router.push('/torneos/nuevo')} />
+          <View style={styles.row}>
+            <View style={styles.rowField}>
+              <AppButton
+                label="Partidos sueltos"
+                variant="secondary"
+                onPress={() => router.push('/torneos/partidos')}
+              />
+            </View>
+            <View style={styles.rowField}>
+              <AppButton
+                label="Anotador"
+                variant="secondary"
+                onPress={() => router.push('/torneos/anotador')}
+              />
+            </View>
+          </View>
 
           <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.summaryTitle, { color: colors.text }]}>Resumen de la temporada</Text>
@@ -145,18 +171,18 @@ export default function TorneosScreen() {
       }
       renderItem={({ item }) => (
         <Pressable
-          style={[styles.row, { borderBottomColor: colors.border }]}
+          style={[styles.row2, { borderBottomColor: colors.border }]}
           onPress={() =>
             router.push({ pathname: '/torneos/[tournamentId]', params: { tournamentId: item.id } })
           }
         >
-          <Text style={[styles.rowTitle, { color: colors.text }]}>
-            {formatDate(item.match_date)}
-            {item.match_time ? ` · ${item.match_time.slice(0, 5)}` : ''} vs {item.opponent}
-          </Text>
+          <Text style={[styles.rowTitle, { color: colors.text }]}>{item.title}</Text>
           <Text style={[styles.rowSub, { color: colors.textMuted }]}>
-            {item.location ?? 'Sin lugar cargado'}
-            {item.result ? ` · ${item.result}` : ''}
+            {formatDate(item.start_date)}
+            {item.end_date ? ` - ${formatDate(item.end_date)}` : ''}
+            {item.location ? ` · ${item.location}` : ''}
+            {' · '}
+            {item.is_paid ? 'Pagado' : 'Pendiente de pago'}
           </Text>
         </Pressable>
       )}
@@ -168,6 +194,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { flexGrow: 1 },
   header: { padding: spacing.lg, gap: spacing.md },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  rowField: { flex: 1 },
   summaryCard: { borderRadius: radius, padding: spacing.md, gap: spacing.sm },
   summaryTitle: { fontSize: typography.body, fontFamily: fonts.bold },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
@@ -187,7 +215,7 @@ const styles = StyleSheet.create({
   pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
-  row: {
+  row2: {
     minHeight: 64,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
