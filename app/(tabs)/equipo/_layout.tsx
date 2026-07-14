@@ -16,6 +16,7 @@ export default function EquipoLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Equipo' }} />
+      <Stack.Screen name="datos" options={{ title: 'Datos del equipo' }} />
       <Stack.Screen name="nuevo" options={{ title: 'Nuevo jugador' }} />
       <Stack.Screen name="[playerId]" options={{ title: 'Jugador' }} />
     </Stack>

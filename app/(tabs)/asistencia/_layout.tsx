@@ -16,6 +16,7 @@ export default function AsistenciaLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Asistencia' }} />
+      <Stack.Screen name="porcentaje" options={{ title: '% de asistencia' }} />
       <Stack.Screen name="[sessionId]" options={{ title: 'Tomar asistencia' }} />
       <Stack.Screen name="rutina/[sessionId]" options={{ title: 'Rutina de hoy' }} />
     </Stack>

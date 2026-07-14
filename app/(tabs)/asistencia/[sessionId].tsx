@@ -1,14 +1,28 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
-import { getSession, getRecordsForSession, setAttendance, type LocalSession } from '../../../src/db/local/attendance';
+import { AppTextInput } from '../../../src/components/AppTextInput';
+import { TimeField } from '../../../src/components/TimeField';
+import {
+  deleteSessionLocal,
+  getRecordsForSession,
+  getSession,
+  markAllPresent,
+  setAttendance,
+  setSessionDetails,
+  type LocalRecord,
+  type LocalSession,
+} from '../../../src/db/local/attendance';
 import { getCachedPlayers, type CachedPlayer } from '../../../src/db/local/playersCache';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
+import { deleteSessionRemoteIfSynced } from '../../../src/sync/attendanceSync';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
 
 type PresenceMap = Record<string, boolean | undefined>;
+type NoteMap = Record<string, string>;
+type EditedMap = Record<string, number | null>;
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split('-');
@@ -21,7 +35,11 @@ export default function TomarAsistenciaScreen() {
   const [session, setSession] = useState<LocalSession | null>(null);
   const [players, setPlayers] = useState<CachedPlayer[]>([]);
   const [presence, setPresence] = useState<PresenceMap>({});
+  const [notes, setNotes] = useState<NoteMap>({});
+  const [edited, setEdited] = useState<EditedMap>({});
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const { isSyncing, pendingCount, syncNow, refreshPendingCount } = useAttendanceSync(
     session?.team_id ?? null
   );
@@ -38,11 +56,17 @@ export default function TomarAsistenciaScreen() {
       getRecordsForSession(sessionId),
     ]);
     setPlayers(cachedPlayers);
-    const map: PresenceMap = {};
-    for (const record of records) {
-      map[record.player_id] = record.present === 1;
+    const presenceMap: PresenceMap = {};
+    const noteMap: NoteMap = {};
+    const editedMap: EditedMap = {};
+    for (const record of records as LocalRecord[]) {
+      presenceMap[record.player_id] = record.present === 1;
+      noteMap[record.player_id] = record.note ?? '';
+      editedMap[record.player_id] = record.edited_at;
     }
-    setPresence(map);
+    setPresence(presenceMap);
+    setNotes(noteMap);
+    setEdited(editedMap);
     setLoading(false);
   }, [sessionId]);
 
@@ -54,6 +78,55 @@ export default function TomarAsistenciaScreen() {
     setPresence((prev) => ({ ...prev, [playerId]: present }));
     await setAttendance(sessionId, playerId, present);
     await refreshPendingCount();
+  }
+
+  async function handleNoteChange(playerId: string, note: string) {
+    setNotes((prev) => ({ ...prev, [playerId]: note }));
+  }
+
+  async function handleNoteBlur(playerId: string) {
+    const present = presence[playerId] ?? false;
+    await setAttendance(sessionId, playerId, present, notes[playerId] || null);
+    await refreshPendingCount();
+  }
+
+  async function handleMarkAllPresent() {
+    if (players.length === 0) return;
+    await markAllPresent(sessionId, players.map((p) => p.id));
+    const nextPresence: PresenceMap = {};
+    for (const p of players) nextPresence[p.id] = true;
+    setPresence(nextPresence);
+    await refreshPendingCount();
+  }
+
+  async function handleSessionDetailsChange(next: { session_time: string | null; location: string | null }) {
+    if (!session) return;
+    await setSessionDetails(session.id, next);
+    setSession({ ...session, ...next });
+  }
+
+  function confirmDeleteSession() {
+    Alert.alert(
+      'Eliminar sesión',
+      '¿Seguro que querés eliminar esta sesión de asistencia? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: handleDeleteSession },
+      ]
+    );
+  }
+
+  async function handleDeleteSession() {
+    if (!session) return;
+    setDeleting(true);
+    try {
+      await deleteSessionRemoteIfSynced(session);
+      await deleteSessionLocal(session.id);
+      router.replace('/asistencia');
+    } catch (e) {
+      setDeleting(false);
+      Alert.alert('Error', e instanceof Error ? e.message : 'No pudimos eliminar la sesión.');
+    }
   }
 
   if (loading) {
@@ -90,6 +163,27 @@ export default function TomarAsistenciaScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.detailsContainer}>
+        <View style={styles.detailsRow}>
+          <View style={styles.detailsField}>
+            <Text style={[styles.smallLabel, { color: colors.textMuted }]}>Hora</Text>
+            <TimeField
+              value={session.session_time}
+              onChange={(session_time) => handleSessionDetailsChange({ session_time, location: session.location })}
+            />
+          </View>
+        </View>
+        <Text style={[styles.smallLabel, { color: colors.textMuted }]}>Lugar</Text>
+        <AppTextInput
+          value={session.location ?? ''}
+          onChangeText={(location) =>
+            setSession((prev) => (prev ? { ...prev, location } : prev))
+          }
+          onBlur={() => handleSessionDetailsChange({ session_time: session.session_time, location: session.location })}
+          placeholder="Cancha / dirección"
+        />
+      </View>
+
       <View style={styles.routineButtonContainer}>
         <AppButton
           label="Rutina de hoy"
@@ -104,6 +198,7 @@ export default function TomarAsistenciaScreen() {
             Sincronizá la sesión para poder armar la rutina.
           </Text>
         ) : null}
+        <AppButton label="Marcar todos presentes" variant="secondary" onPress={handleMarkAllPresent} />
       </View>
 
       <FlatList
@@ -119,9 +214,16 @@ export default function TomarAsistenciaScreen() {
         }
         renderItem={({ item }) => {
           const present = presence[item.id];
+          const noteExpanded = expandedNotes.has(item.id);
+          const hasNote = !!notes[item.id];
           return (
             <View style={[styles.row, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.rowName, { color: colors.text }]}>{item.full_name}</Text>
+              <View style={styles.rowHeader}>
+                <Text style={[styles.rowName, { color: colors.text }]}>{item.full_name}</Text>
+                {edited[item.id] ? (
+                  <Text style={[styles.editedLabel, { color: colors.textMuted }]}>editado</Text>
+                ) : null}
+              </View>
               <View style={styles.pillRow}>
                 <Pressable
                   onPress={() => handleMark(item.id, true)}
@@ -158,10 +260,36 @@ export default function TomarAsistenciaScreen() {
                   </Text>
                 </Pressable>
               </View>
+              {noteExpanded ? (
+                <AppTextInput
+                  value={notes[item.id] ?? ''}
+                  onChangeText={(text) => handleNoteChange(item.id, text)}
+                  onBlur={() => handleNoteBlur(item.id)}
+                  placeholder="Nota (ej: llegó tarde)"
+                  style={styles.noteInput}
+                />
+              ) : (
+                <Pressable
+                  onPress={() => setExpandedNotes((prev) => new Set(prev).add(item.id))}
+                >
+                  <Text style={[styles.addNoteLabel, { color: colors.link }]}>
+                    {hasNote ? notes[item.id] : '+ Agregar nota'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           );
         }}
       />
+
+      <View style={styles.deleteContainer}>
+        <AppButton
+          label="Eliminar sesión"
+          variant="secondary"
+          onPress={confirmDeleteSession}
+          loading={deleting}
+        />
+      </View>
     </View>
   );
 }
@@ -181,7 +309,11 @@ const styles = StyleSheet.create({
   },
   syncText: { fontSize: typography.caption, fontFamily: fonts.bold },
   syncAction: { fontSize: typography.caption, fontFamily: fonts.bold },
-  routineButtonContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.xs },
+  detailsContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.xs },
+  detailsRow: { flexDirection: 'row', gap: spacing.md },
+  detailsField: { flex: 1 },
+  smallLabel: { fontSize: typography.caption, fontFamily: fonts.bold, marginBottom: spacing.xs },
+  routineButtonContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm },
   routineHint: { fontSize: typography.caption, fontFamily: fonts.regular },
   listContent: { padding: spacing.lg, gap: spacing.sm },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
@@ -191,7 +323,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowName: { fontSize: typography.body, fontFamily: fonts.bold },
+  editedLabel: { fontSize: 11, fontFamily: fonts.regular, fontStyle: 'italic' },
   pillRow: { flexDirection: 'row', gap: spacing.sm },
   pill: {
     flex: 1,
@@ -202,4 +336,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  addNoteLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  noteInput: { minHeight: 40, paddingVertical: spacing.xs },
+  deleteContainer: { padding: spacing.lg, paddingTop: 0 },
 });

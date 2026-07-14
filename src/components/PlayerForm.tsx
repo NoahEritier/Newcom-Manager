@@ -32,6 +32,9 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
     initialValue?.medical_expiry ?? null
   );
   const [notes, setNotes] = useState(initialValue?.notes ?? '');
+  const [photoUrl, setPhotoUrl] = useState(initialValue?.photo_url ?? '');
+  const [emergencyName, setEmergencyName] = useState(initialValue?.emergency_contact_name ?? '');
+  const [emergencyPhone, setEmergencyPhone] = useState(initialValue?.emergency_contact_phone ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +55,9 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
         medical_status: medicalStatus,
         medical_expiry: medicalExpiry,
         notes: notes.trim() || null,
+        photo_url: photoUrl.trim() || null,
+        emergency_contact_name: emergencyName.trim() || null,
+        emergency_contact_phone: emergencyPhone.trim() || null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos guardar. Probá de nuevo.');
@@ -121,11 +127,34 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
         placeholder="Seleccionar fecha de vencimiento"
       />
 
+      <Text style={[styles.label, { color: colors.textMuted }]}>Contacto de emergencia</Text>
+      <AppTextInput
+        value={emergencyName}
+        onChangeText={setEmergencyName}
+        placeholder="Nombre del contacto"
+      />
+      <View style={styles.smallSpacer} />
+      <AppTextInput
+        value={emergencyPhone}
+        onChangeText={setEmergencyPhone}
+        placeholder="Teléfono del contacto"
+        keyboardType="phone-pad"
+      />
+
+      <Text style={[styles.label, { color: colors.textMuted }]}>Link de foto (opcional)</Text>
+      <AppTextInput
+        value={photoUrl}
+        onChangeText={setPhotoUrl}
+        placeholder="https://..."
+        keyboardType="url"
+        autoCapitalize="none"
+      />
+
       <Text style={[styles.label, { color: colors.textMuted }]}>Notas</Text>
       <AppTextInput
         value={notes}
         onChangeText={setNotes}
-        placeholder="Notas libres (alergias, contacto de emergencia, etc.)"
+        placeholder="Notas libres (alergias, observaciones, etc.)"
         multiline
         numberOfLines={4}
         style={styles.notesInput}
@@ -165,4 +194,5 @@ const styles = StyleSheet.create({
   notesInput: { minHeight: 96, paddingVertical: spacing.sm, textAlignVertical: 'top' },
   error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.md },
   spacer: { height: spacing.md },
+  smallSpacer: { height: spacing.sm },
 });

@@ -206,28 +206,62 @@ del proyecto Supabase.
 - **Feature 3 (Asistencia) validada en dispositivo real**, incluido offline
   (modo avión + reconexión).
 - **Identidad visual aplicada** (guía de diseño del usuario): paleta azul
-  marino/ámbar con modo oscuro automático (`useColorScheme`), tipografía
-  Atkinson Hyperlegible en toda la app, Material Icons Filled en la tab bar.
-  Ícono de app y splash screen generados a partir de un asset de pelota
-  provisto por el usuario (ver `src/theme/index.ts` para la paleta completa).
-- **Feature 4 (Ejercicios) implementada:** biblioteca de ejercicios (título,
-  descripción, link de imagen/video) con alta/edición/baja (delete físico,
-  `exercises` no tiene `is_active` en el esquema). Armado de rutinas por
-  sesión de asistencia (`routines`/`routine_exercises`, online-only — requiere
-  que la sesión ya esté sincronizada, dado que la FK apunta a
-  `attendance_sessions` remota).
-- **Feature 5 (Torneos) implementada:** alta/edición/baja de torneos (fecha,
-  rival, lugar, resultado).
-- **Feature 6 (WhatsApp) implementada:** botón "Enviar alerta" en Torneos y
-  "Avisar entrenamiento" en Asistencia, vía `wa.me` con mensaje pre-cargado
-  (sin Business API, el coach elige el chat/grupo destino).
+  marino/ámbar, tipografía Atkinson Hyperlegible en toda la app, Material
+  Icons Filled en la tab bar. Ícono de app y splash screen generados a partir
+  de un asset de pelota provisto por el usuario (ver `src/theme/index.ts`
+  para la paleta completa).
+- **Modo claro/oscuro con toggle manual** (no sigue el tema del sistema):
+  default claro, elegido explícitamente por el usuario, persistido en
+  `AsyncStorage` vía `ThemeModeProvider` (`src/hooks/useThemePreference.tsx`).
+  Botón de sol/luna en el header de las 4 tabs.
+- **Feature 4 (Ejercicios) implementada:** biblioteca con categoría (lista
+  fija: entrada en calor/técnica/táctica/físico/otro — no configurable por el
+  usuario, para no sobre-construir), duración estimada, materiales,
+  descripción, link de imagen/video. Buscador + filtro por categoría.
+- **Rutinas reconstruidas como biblioteca reutilizable** (ya no atadas 1:1 a
+  una sesión): favoritas, duplicar, reordenar ejercicios con flechas
+  subir/bajar (sin drag-and-drop, más accesible para el público objetivo).
+  Se vinculan a sesiones de asistencia vía `session_routines`
+  (many-to-many) — requiere que la sesión ya esté sincronizada, dado que la
+  FK apunta a `attendance_sessions` remota.
+- **Feature 5 (Torneos) ampliada:** hora, local/visitante, dirección (con
+  botón "Abrir en Maps"), marcador propio/rival con resultado derivado
+  en el cliente (no se duplica en la base), resumen de temporada
+  (ganados/perdidos/empatados), filtro próximos/pasados.
+- **Feature 6 (WhatsApp) implementada:** alertas pre-cargadas (`wa.me`) en
+  Torneos (convocatoria), Asistencia (aviso de entrenamiento) y Equipo
+  (individual desde la ficha del jugador + grupal desde la lista).
+- **Equipo ampliado:** nombre, género, categoría y días de entrenamiento
+  recurrentes (`training_days`, usados por el mini calendario semanal de
+  Asistencia) editables desde "Datos del equipo". Buscador de jugadores,
+  badges de apto médico, contacto de emergencia, límite de 15 jugadores del
+  plan free con aviso (no bloqueo abrupto a mitad de carga). Preparado para
+  multi-equipo a futuro (el modelo ya soporta N equipos por coach; la UI
+  sigue asumiendo uno solo por ahora, a pedido explícito del usuario).
+- **Asistencia ampliada:** mini calendario de la semana actual (marca días de
+  entrenamiento según `training_days` y sesiones ya creadas), hora/ubicación
+  editable por sesión (prellenada con el default del equipo), nota corta por
+  jugador, marca "editado" con timestamp al corregir una asistencia ya
+  sincronizada, botón "marcar todos presentes", borrar sesión (con
+  confirmación), % de asistencia por jugador (basado en los últimos 30 días
+  cacheados localmente).
 - **Google Calendar (sección 3.7) pausada a propósito**: alcance ya propuesto
   (sync one-way app→Calendar, solo torneos + opcionalmente entrenamientos,
   OAuth con scope `calendar.events`) y aprobado por el usuario, pero requiere
   que el usuario cree un proyecto en Google Cloud Console + credenciales OAuth
   antes de poder implementarla — se retoma cuando las tenga. Es la feature de
   menor prioridad del MVP.
-- **Estado del MVP: features 1-6 completas** (Auth, Equipo, Asistencia,
-  Ejercicios+Rutinas, Torneos, WhatsApp). Falta: Google Calendar (bloqueada
-  por credenciales externas), y probar todo en dispositivo real de punta a
-  punta antes de armar el build `preview` para el piloto.
+- **Migración 0002 + 0002b corridas en Supabase**: ampliación de esquema
+  (teams, players, attendance_sessions/records, exercises, routines +
+  session_routines nueva, tournaments) según la spec funcional de pantallas
+  del usuario. La restructuración de `routines` (de "1 por sesión" a
+  biblioteca reutilizable) tuvo un incidente de migración parcial que dejó
+  `routines`/`routine_exercises` sin políticas RLS por un rato — resuelto con
+  0002b_fix_routines_rls.sql (idempotente, seguro de re-correr).
+- **Estado del MVP: definido por el usuario como "completo cuando estas
+  funcionalidades estén funcionando correctamente"** (la spec funcional de
+  pantallas completa, no solo las features 1-6 originales). Falta: Google
+  Calendar (bloqueada por credenciales externas), y probar en dispositivo
+  real toda la ampliación (equipo, calendario semanal, notas/edición de
+  asistencia, rutinas reutilizables, marcador de torneos, etc.) antes de
+  armar el build `preview` para el piloto.

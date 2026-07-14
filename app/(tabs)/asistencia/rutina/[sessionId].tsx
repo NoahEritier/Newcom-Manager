@@ -1,30 +1,34 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton } from '../../../../src/components/AppButton';
+import { AppTextInput } from '../../../../src/components/AppTextInput';
 import {
-  addExerciseToRoutine,
-  getOrCreateRoutine,
-  listRoutineExercises,
-  removeRoutineExercise,
-  type RoutineExercise,
+  createRoutine,
+  linkRoutineToSession,
+  listRoutines,
+  listRoutinesForSession,
+  unlinkRoutineFromSession,
+  type Routine,
 } from '../../../../src/db/supabase/routines';
-import { listExercises, type Exercise } from '../../../../src/db/supabase/exercises';
 import { useAuth } from '../../../../src/hooks/useAuth';
-import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../../src/theme';
+import { useTeam } from '../../../../src/hooks/useTeam';
+import { fonts, minTouchSize, spacing, typography, useTheme } from '../../../../src/theme';
 
-export default function RutinaScreen() {
+export default function RutinaDeSesionScreen() {
   const { colors } = useTheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { session } = useAuth();
+  const { teamId } = useTeam();
   const coachId = session?.user.id ?? null;
 
-  const [routineId, setRoutineId] = useState<string | null>(null);
-  const [routineExercises, setRoutineExercises] = useState<RoutineExercise[]>([]);
-  const [library, setLibrary] = useState<Exercise[]>([]);
+  const [linked, setLinked] = useState<Routine[]>([]);
+  const [library, setLibrary] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -32,13 +36,12 @@ export default function RutinaScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [id, allExercises] = await Promise.all([
-        getOrCreateRoutine(sessionId),
-        listExercises(coachId),
+      const [linkedRoutines, allRoutines] = await Promise.all([
+        listRoutinesForSession(sessionId),
+        listRoutines(coachId),
       ]);
-      setRoutineId(id);
-      setLibrary(allExercises);
-      setRoutineExercises(await listRoutineExercises(id));
+      setLinked(linkedRoutines);
+      setLibrary(allRoutines);
     } catch (e) {
       setError(
         e instanceof Error
@@ -56,25 +59,37 @@ export default function RutinaScreen() {
     }, [load])
   );
 
-  async function handleAdd(exerciseId: string) {
-    if (!routineId) return;
-    setBusyId(exerciseId);
+  async function handleLink(routineId: string) {
+    setBusyId(routineId);
     try {
-      await addExerciseToRoutine(routineId, exerciseId, routineExercises.length);
-      setRoutineExercises(await listRoutineExercises(routineId));
+      await linkRoutineToSession(sessionId, routineId);
+      await load();
     } finally {
       setBusyId(null);
     }
   }
 
-  async function handleRemove(routineExerciseId: string) {
-    if (!routineId) return;
-    setBusyId(routineExerciseId);
+  async function handleUnlink(routineId: string) {
+    setBusyId(routineId);
     try {
-      await removeRoutineExercise(routineExerciseId);
-      setRoutineExercises(await listRoutineExercises(routineId));
+      await unlinkRoutineFromSession(sessionId, routineId);
+      await load();
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleCreateAndLink() {
+    const trimmed = newTitle.trim();
+    if (!trimmed || !coachId) return;
+    setCreating(true);
+    try {
+      const routineId = await createRoutine(coachId, teamId, trimmed);
+      await linkRoutineToSession(sessionId, routineId);
+      router.push({ pathname: '/ejercicios/rutinas/[routineId]', params: { routineId } });
+    } finally {
+      setCreating(false);
+      setNewTitle('');
     }
   }
 
@@ -94,53 +109,68 @@ export default function RutinaScreen() {
     );
   }
 
-  const addedIds = new Set(routineExercises.map((re) => re.exercise_id));
-  const available = library.filter((ex) => !addedIds.has(ex.id));
+  const linkedIds = new Set(linked.map((r) => r.id));
+  const availableToLink = library.filter((r) => !linkedIds.has(r.id));
 
   return (
     <FlatList
-      data={routineExercises}
+      data={linked}
       keyExtractor={(item) => item.id}
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.background }]}
       ListHeaderComponent={
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Rutina de hoy</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Rutina/s de hoy</Text>
       }
       ListEmptyComponent={
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-          Todavía no agregaste ejercicios a esta rutina.
+          Todavía no vinculaste ninguna rutina a esta sesión.
         </Text>
       }
       renderItem={({ item }) => (
-        <View style={[styles.row, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.rowTitle, { color: colors.text }]}>{item.exercise_title}</Text>
-          <Pressable
-            onPress={() => handleRemove(item.id)}
-            disabled={busyId === item.id}
-            style={styles.removeButton}
-          >
+        <Pressable
+          style={[styles.row, { borderBottomColor: colors.border }]}
+          onPress={() => router.push({ pathname: '/ejercicios/rutinas/[routineId]', params: { routineId: item.id } })}
+        >
+          <Text style={[styles.rowTitle, { color: colors.text }]}>{item.title}</Text>
+          <Pressable onPress={() => handleUnlink(item.id)} disabled={busyId === item.id}>
             <Text style={[styles.removeLabel, { color: colors.danger }]}>Quitar</Text>
           </Pressable>
-        </View>
+        </Pressable>
       )}
       ListFooterComponent={
         <View>
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
-            Agregar de tu biblioteca
+            Crear rutina nueva para hoy
           </Text>
-          {available.length === 0 ? (
+          <AppTextInput
+            value={newTitle}
+            onChangeText={setNewTitle}
+            placeholder="Nombre de la rutina"
+          />
+          <View style={styles.smallSpacer} />
+          <AppButton
+            label="Crear y agregar ejercicios"
+            onPress={handleCreateAndLink}
+            loading={creating}
+            disabled={!newTitle.trim()}
+          />
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
+            Vincular una rutina existente
+          </Text>
+          {availableToLink.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              No hay más ejercicios para agregar. Cargá más desde la tab Ejercicios.
+              No hay más rutinas en tu biblioteca.
             </Text>
           ) : (
-            available.map((ex) => (
+            availableToLink.map((r) => (
               <Pressable
-                key={ex.id}
-                onPress={() => handleAdd(ex.id)}
-                disabled={busyId === ex.id}
+                key={r.id}
+                onPress={() => handleLink(r.id)}
+                disabled={busyId === r.id}
                 style={[styles.row, { borderBottomColor: colors.border }]}
               >
-                <Text style={[styles.rowTitle, { color: colors.text }]}>{ex.title}</Text>
-                <Text style={[styles.addLabel, { color: colors.link }]}>+ Agregar</Text>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>{r.title}</Text>
+                <Text style={[styles.addLabel, { color: colors.link }]}>+ Vincular</Text>
               </Pressable>
             ))
           )}
@@ -164,8 +194,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   rowTitle: { fontSize: typography.body, fontFamily: fonts.bold, flex: 1 },
-  removeButton: { minHeight: minTouchSize, justifyContent: 'center', paddingLeft: spacing.md },
   removeLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   addLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  smallSpacer: { height: spacing.sm },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
 });

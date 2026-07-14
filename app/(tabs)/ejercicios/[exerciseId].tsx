@@ -83,6 +83,9 @@ export default function EditarEjercicioScreen() {
           title: exercise.title,
           description: exercise.description,
           media_url: exercise.media_url,
+          category: exercise.category,
+          duration_minutes: exercise.duration_minutes,
+          materials: exercise.materials,
         }}
       />
       <View style={styles.deleteContainer}>

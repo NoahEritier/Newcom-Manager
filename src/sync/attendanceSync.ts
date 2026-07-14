@@ -1,4 +1,5 @@
 import {
+  deleteRemoteSession,
   listRemoteRecords,
   listRemoteSessions,
   upsertRemoteRecord,
@@ -38,17 +39,21 @@ export async function pullAttendance(teamId: string): Promise<void> {
     );
     if (!local) {
       await db.runAsync(
-        'INSERT INTO attendance_sessions_local (id, team_id, session_date, sync_status, updated_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO attendance_sessions_local (id, team_id, session_date, session_time, location, sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         remoteSession.id,
         teamId,
         remoteSession.session_date,
+        remoteSession.session_time,
+        remoteSession.location,
         'synced',
         Date.now()
       );
-    } else if (local.sync_status === 'synced' && local.id !== remoteSession.id) {
+    } else if (local.sync_status === 'synced') {
       await db.runAsync(
-        'UPDATE attendance_sessions_local SET id = ? WHERE id = ?',
+        'UPDATE attendance_sessions_local SET id = ?, session_time = ?, location = ? WHERE id = ?',
         remoteSession.id,
+        remoteSession.session_time,
+        remoteSession.location,
         local.id
       );
     }
@@ -63,20 +68,25 @@ export async function pullAttendance(teamId: string): Promise<void> {
       remoteRecord.session_id,
       remoteRecord.player_id
     );
+    const editedAt = remoteRecord.edited_at ? new Date(remoteRecord.edited_at).getTime() : null;
     if (!local) {
       await db.runAsync(
-        'INSERT INTO attendance_records_local (id, session_id, player_id, present, sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO attendance_records_local (id, session_id, player_id, present, note, edited_at, sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         remoteRecord.id,
         remoteRecord.session_id,
         remoteRecord.player_id,
         remoteRecord.present ? 1 : 0,
+        remoteRecord.note,
+        editedAt,
         'synced',
         Date.now()
       );
     } else if (local.sync_status === 'synced') {
       await db.runAsync(
-        'UPDATE attendance_records_local SET present = ?, id = ? WHERE id = ?',
+        'UPDATE attendance_records_local SET present = ?, note = ?, edited_at = ?, id = ? WHERE id = ?',
         remoteRecord.present ? 1 : 0,
+        remoteRecord.note,
+        editedAt,
         remoteRecord.id,
         local.id
       );
@@ -99,6 +109,8 @@ export async function pushAttendance(teamId: string): Promise<{ pushed: number; 
         id: session.id,
         team_id: session.team_id,
         session_date: session.session_date,
+        session_time: session.session_time,
+        location: session.location,
       });
       await db.runAsync(
         "UPDATE attendance_sessions_local SET sync_status = 'synced' WHERE id = ?",
@@ -123,6 +135,8 @@ export async function pushAttendance(teamId: string): Promise<{ pushed: number; 
         session_id: record.session_id,
         player_id: record.player_id,
         present: record.present === 1,
+        note: record.note,
+        edited_at: record.edited_at ? new Date(record.edited_at).toISOString() : null,
       });
       await db.runAsync(
         "UPDATE attendance_records_local SET sync_status = 'synced' WHERE id = ?",
@@ -141,4 +155,12 @@ export async function syncAttendance(teamId: string): Promise<{ pushed: number; 
   const result = await pushAttendance(teamId);
   await pullAttendance(teamId);
   return result;
+}
+
+// Borra la sesión remota si ya estaba sincronizada (si nunca se subió, no
+// existe del otro lado y no hace falta). El delete local siempre se hace aparte.
+export async function deleteSessionRemoteIfSynced(session: LocalSession): Promise<void> {
+  if (session.sync_status === 'synced') {
+    await deleteRemoteSession(session.id);
+  }
 }

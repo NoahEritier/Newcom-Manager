@@ -12,6 +12,7 @@ import {
   type PlayerInput,
 } from '../../../src/db/supabase/players';
 import { fonts, spacing, typography, useTheme } from '../../../src/theme';
+import { openWhatsAppToNumber } from '../../../src/utils/whatsapp';
 
 export default function EditarJugadorScreen() {
   const { colors } = useTheme();
@@ -55,6 +56,12 @@ export default function EditarJugadorScreen() {
     }
   }
 
+  function handleWhatsApp() {
+    const number = player?.whatsapp || player?.phone;
+    if (!number) return;
+    openWhatsAppToNumber(number, `Hola ${player?.full_name?.split(' ')[0] ?? ''}!`);
+  }
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -87,9 +94,18 @@ export default function EditarJugadorScreen() {
           medical_status: player.medical_status,
           medical_expiry: player.medical_expiry,
           notes: player.notes,
+          photo_url: player.photo_url,
+          emergency_contact_name: player.emergency_contact_name,
+          emergency_contact_phone: player.emergency_contact_phone,
         }}
       />
       <View style={styles.deleteContainer}>
+        {player.whatsapp || player.phone ? (
+          <>
+            <AppButton label="Escribir por WhatsApp" variant="secondary" onPress={handleWhatsApp} />
+            <View style={styles.buttonSpacer} />
+          </>
+        ) : null}
         <AppButton
           label="Eliminar jugador"
           variant="secondary"
@@ -106,4 +122,5 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
   deleteContainer: { padding: spacing.lg, paddingTop: 0 },
+  buttonSpacer: { height: spacing.sm },
 });

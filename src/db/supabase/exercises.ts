@@ -1,11 +1,16 @@
 import { supabase } from './client';
 
+export type ExerciseCategory = 'entrada_en_calor' | 'tecnica' | 'tactica' | 'fisico' | 'otro';
+
 export type Exercise = {
   id: string;
   coach_id: string;
   title: string;
   description: string | null;
   media_url: string | null;
+  category: ExerciseCategory | null;
+  duration_minutes: number | null;
+  materials: string | null;
   created_at: string;
 };
 
@@ -13,6 +18,9 @@ export type ExerciseInput = {
   title: string;
   description: string | null;
   media_url: string | null;
+  category: ExerciseCategory | null;
+  duration_minutes: number | null;
+  materials: string | null;
 };
 
 export async function listExercises(coachId: string): Promise<Exercise[]> {

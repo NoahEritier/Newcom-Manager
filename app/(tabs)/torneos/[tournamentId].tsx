@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
 import { TournamentForm } from '../../../src/components/TournamentForm';
@@ -64,11 +64,17 @@ export default function EditarTorneoScreen() {
   function handleShare() {
     if (!tournament) return;
     const parts = [
-      `Torneo vs ${tournament.opponent}`,
-      `Fecha: ${formatDate(tournament.match_date)}`,
+      `Convocatoria: torneo vs ${tournament.opponent}`,
+      `Fecha: ${formatDate(tournament.match_date)}${tournament.match_time ? ` ${tournament.match_time.slice(0, 5)}hs` : ''}`,
     ];
     if (tournament.location) parts.push(`Lugar: ${tournament.location}`);
     openWhatsAppMessage(parts.join('\n'));
+  }
+
+  function handleOpenMaps() {
+    if (!tournament?.address) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tournament.address)}`;
+    Linking.openURL(url);
   }
 
   if (loading) {
@@ -92,19 +98,28 @@ export default function EditarTorneoScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: `vs ${tournament.opponent}` }} />
+      <View style={styles.quickActions}>
+        <AppButton label="Enviar convocatoria por WhatsApp" variant="secondary" onPress={handleShare} />
+        {tournament.address ? (
+          <AppButton label="Abrir ubicación en Maps" variant="secondary" onPress={handleOpenMaps} />
+        ) : null}
+      </View>
       <TournamentForm
         submitLabel="Guardar cambios"
         onSubmit={handleSubmit}
         initialValue={{
           match_date: tournament.match_date,
+          match_time: tournament.match_time,
           opponent: tournament.opponent,
           location: tournament.location,
+          address: tournament.address,
+          home_away: tournament.home_away,
+          score_own: tournament.score_own,
+          score_opponent: tournament.score_opponent,
           result: tournament.result,
         }}
       />
       <View style={styles.actionsContainer}>
-        <AppButton label="Enviar alerta por WhatsApp" variant="secondary" onPress={handleShare} />
-        <View style={styles.spacer} />
         <AppButton
           label="Eliminar torneo"
           variant="secondary"
@@ -120,6 +135,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
+  quickActions: { padding: spacing.lg, paddingBottom: 0, gap: spacing.sm },
   actionsContainer: { padding: spacing.lg, paddingTop: 0 },
-  spacer: { height: spacing.sm },
 });

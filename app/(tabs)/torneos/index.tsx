@@ -1,16 +1,22 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
 import { listTournaments, type Tournament } from '../../../src/db/supabase/tournaments';
 import { useTeam } from '../../../src/hooks/useTeam';
-import { fonts, spacing, typography, useTheme } from '../../../src/theme';
+import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
 }
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+type Filter = 'proximos' | 'pasados';
 
 export default function TorneosScreen() {
   const { colors } = useTheme();
@@ -18,6 +24,7 @@ export default function TorneosScreen() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>('proximos');
 
   const load = useCallback(async () => {
     if (!teamId) return;
@@ -38,6 +45,26 @@ export default function TorneosScreen() {
     }, [load])
   );
 
+  const filtered = useMemo(() => {
+    const today = todayIso();
+    return tournaments
+      .filter((t) => (filter === 'proximos' ? t.match_date >= today : t.match_date < today))
+      .sort((a, b) => (filter === 'proximos' ? a.match_date.localeCompare(b.match_date) : b.match_date.localeCompare(a.match_date)));
+  }, [tournaments, filter]);
+
+  const summary = useMemo(() => {
+    let won = 0;
+    let lost = 0;
+    let drawn = 0;
+    for (const t of tournaments) {
+      if (t.score_own === null || t.score_opponent === null) continue;
+      if (t.score_own > t.score_opponent) won++;
+      else if (t.score_own < t.score_opponent) lost++;
+      else drawn++;
+    }
+    return { won, lost, drawn };
+  }, [tournaments]);
+
   if (teamLoading || (loading && tournaments.length === 0)) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -56,18 +83,63 @@ export default function TorneosScreen() {
 
   return (
     <FlatList
-      data={tournaments}
+      data={filtered}
       keyExtractor={(item) => item.id}
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.background }]}
       ListHeaderComponent={
         <View style={styles.header}>
           <AppButton label="+ Agregar torneo" onPress={() => router.push('/torneos/nuevo')} />
+
+          <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>Resumen de la temporada</Text>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryNumber, { color: colors.success }]}>{summary.won}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Ganados</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryNumber, { color: colors.danger }]}>{summary.lost}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Perdidos</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryNumber, { color: colors.textMuted }]}>{summary.drawn}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Empatados</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.pillRow}>
+            <Pressable
+              onPress={() => setFilter('proximos')}
+              style={[
+                styles.pill,
+                { borderColor: colors.border, backgroundColor: colors.surface },
+                filter === 'proximos' && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
+            >
+              <Text style={[styles.pillLabel, { color: filter === 'proximos' ? colors.primaryText : colors.text }]}>
+                Próximos
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFilter('pasados')}
+              style={[
+                styles.pill,
+                { borderColor: colors.border, backgroundColor: colors.surface },
+                filter === 'pasados' && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
+            >
+              <Text style={[styles.pillLabel, { color: filter === 'pasados' ? colors.primaryText : colors.text }]}>
+                Pasados
+              </Text>
+            </Pressable>
+          </View>
         </View>
       }
       ListEmptyComponent={
         <View style={styles.emptyContainer}>
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-            Todavía no cargaste torneos.
+            {filter === 'proximos' ? 'No hay torneos próximos.' : 'No hay torneos pasados.'}
           </Text>
         </View>
       }
@@ -79,7 +151,8 @@ export default function TorneosScreen() {
           }
         >
           <Text style={[styles.rowTitle, { color: colors.text }]}>
-            {formatDate(item.match_date)} vs {item.opponent}
+            {formatDate(item.match_date)}
+            {item.match_time ? ` · ${item.match_time.slice(0, 5)}` : ''} vs {item.opponent}
           </Text>
           <Text style={[styles.rowSub, { color: colors.textMuted }]}>
             {item.location ?? 'Sin lugar cargado'}
@@ -94,7 +167,24 @@ export default function TorneosScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { flexGrow: 1 },
-  header: { padding: spacing.lg },
+  header: { padding: spacing.lg, gap: spacing.md },
+  summaryCard: { borderRadius: radius, padding: spacing.md, gap: spacing.sm },
+  summaryTitle: { fontSize: typography.body, fontFamily: fonts.bold },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  summaryItem: { alignItems: 'center' },
+  summaryNumber: { fontSize: typography.screenTitle, fontFamily: fonts.bold },
+  summaryLabel: { fontSize: typography.caption, fontFamily: fonts.regular },
+  pillRow: { flexDirection: 'row', gap: spacing.sm },
+  pill: {
+    minHeight: minTouchSize,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius,
+    borderWidth: 1,
+    justifyContent: 'center',
+    flex: 1,
+    alignItems: 'center',
+  },
+  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   row: {

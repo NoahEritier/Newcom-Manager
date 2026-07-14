@@ -12,6 +12,9 @@ export type Player = {
   medical_status: MedicalStatus;
   medical_expiry: string | null;
   notes: string | null;
+  photo_url: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -25,6 +28,9 @@ export type PlayerInput = {
   medical_status: MedicalStatus;
   medical_expiry: string | null;
   notes: string | null;
+  photo_url: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
 };
 
 export async function listPlayers(teamId: string): Promise<Player[]> {

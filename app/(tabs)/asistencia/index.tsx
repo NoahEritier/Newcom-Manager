@@ -3,7 +3,13 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
-import { getOrCreateSessionForDate, listRecentSessions, type SessionSummary } from '../../../src/db/local/attendance';
+import { WeekCalendar } from '../../../src/components/WeekCalendar';
+import {
+  getOrCreateSessionForDate,
+  listRecentSessions,
+  listSessionDatesForTeam,
+  type SessionSummary,
+} from '../../../src/db/local/attendance';
 import { signOut } from '../../../src/db/supabase/auth';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
 import { useTeam } from '../../../src/hooks/useTeam';
@@ -26,16 +32,22 @@ function handleShareTraining() {
 
 export default function AsistenciaScreen() {
   const { colors } = useTheme();
-  const { teamId, isLoading: teamLoading } = useTeam();
+  const { team, teamId, isLoading: teamLoading } = useTeam();
   const { isSyncing, pendingCount, error: syncError, syncNow } = useAttendanceSync(teamId);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [sessionDates, setSessionDates] = useState<Set<string>>(new Set());
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [startingToday, setStartingToday] = useState(false);
+  const [openingDate, setOpeningDate] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     if (!teamId) return;
     setLoadingSessions(true);
-    setSessions(await listRecentSessions(teamId));
+    const [recent, dates] = await Promise.all([
+      listRecentSessions(teamId),
+      listSessionDatesForTeam(teamId),
+    ]);
+    setSessions(recent);
+    setSessionDates(new Set(dates));
     setLoadingSessions(false);
   }, [teamId]);
 
@@ -45,14 +57,14 @@ export default function AsistenciaScreen() {
     }, [loadSessions])
   );
 
-  async function handleStartToday() {
+  async function handleOpenDate(dateIso: string) {
     if (!teamId) return;
-    setStartingToday(true);
+    setOpeningDate(dateIso);
     try {
-      const session = await getOrCreateSessionForDate(teamId, todayIso());
+      const session = await getOrCreateSessionForDate(teamId, dateIso, team?.default_location ?? null);
       router.push({ pathname: '/asistencia/[sessionId]', params: { sessionId: session.id } });
     } finally {
-      setStartingToday(false);
+      setOpeningDate(null);
     }
   }
 
@@ -87,15 +99,26 @@ export default function AsistenciaScreen() {
           </View>
           {syncError ? <Text style={[styles.error, { color: colors.danger }]}>{syncError}</Text> : null}
 
-          <AppButton
-            label="Tomar asistencia de hoy"
-            onPress={handleStartToday}
-            loading={startingToday}
+          <WeekCalendar
+            trainingDays={team?.training_days ?? []}
+            selectedDate={todayIso()}
+            onSelectDate={handleOpenDate}
+            sessionDates={sessionDates}
           />
+          {openingDate ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <AppButton label="Tomar asistencia de hoy" onPress={() => handleOpenDate(todayIso())} />
+          )}
           <AppButton
             label="Avisar entrenamiento por WhatsApp"
             variant="secondary"
             onPress={handleShareTraining}
+          />
+          <AppButton
+            label="Ver % de asistencia"
+            variant="secondary"
+            onPress={() => router.push('/asistencia/porcentaje')}
           />
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Sesiones recientes</Text>
@@ -115,7 +138,10 @@ export default function AsistenciaScreen() {
           style={[styles.row, { borderBottomColor: colors.border }]}
           onPress={() => router.push({ pathname: '/asistencia/[sessionId]', params: { sessionId: item.id } })}
         >
-          <Text style={[styles.rowDate, { color: colors.text }]}>{formatDate(item.session_date)}</Text>
+          <Text style={[styles.rowDate, { color: colors.text }]}>
+            {formatDate(item.session_date)}
+            {item.session_time ? ` · ${item.session_time.slice(0, 5)}` : ''}
+          </Text>
           <Text style={[styles.rowSummary, { color: colors.textMuted }]}>
             {item.present_count} presentes · {item.absent_count} ausentes
             {item.sync_status !== 'synced' ? ' · sin subir' : ''}

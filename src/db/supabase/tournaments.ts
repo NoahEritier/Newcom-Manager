@@ -1,19 +1,31 @@
 import { supabase } from './client';
 
+export type HomeAway = 'local' | 'visitante';
+
 export type Tournament = {
   id: string;
   team_id: string;
   match_date: string;
+  match_time: string | null;
   opponent: string;
   location: string | null;
+  address: string | null;
+  home_away: HomeAway | null;
+  score_own: number | null;
+  score_opponent: number | null;
   result: string | null;
   created_at: string;
 };
 
 export type TournamentInput = {
   match_date: string;
+  match_time: string | null;
   opponent: string;
   location: string | null;
+  address: string | null;
+  home_away: HomeAway | null;
+  score_own: number | null;
+  score_opponent: number | null;
   result: string | null;
 };
 

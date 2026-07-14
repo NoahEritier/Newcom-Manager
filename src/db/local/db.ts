@@ -2,6 +2,16 @@ import * as SQLite from 'expo-sqlite';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
+// SQLite no soporta "ADD COLUMN IF NOT EXISTS": se intenta y se ignora el
+// error si la columna ya existe (forma simple de migrar sin versionado propio).
+async function tryAddColumn(db: SQLite.SQLiteDatabase, table: string, column: string, type: string) {
+  try {
+    await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  } catch {
+    // ya existe, no hacer nada
+  }
+}
+
 export function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = SQLite.openDatabaseAsync('newcom-manager.db').then(async (db) => {
@@ -33,6 +43,12 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
           UNIQUE(session_id, player_id)
         );
       `);
+
+      await tryAddColumn(db, 'attendance_sessions_local', 'session_time', 'TEXT');
+      await tryAddColumn(db, 'attendance_sessions_local', 'location', 'TEXT');
+      await tryAddColumn(db, 'attendance_records_local', 'note', 'TEXT');
+      await tryAddColumn(db, 'attendance_records_local', 'edited_at', 'INTEGER');
+
       return db;
     });
   }
