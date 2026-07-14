@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
 import { ExerciseForm } from '../../../src/components/ExerciseForm';
@@ -55,6 +55,13 @@ export default function EditarEjercicioScreen() {
     }
   }
 
+  function handleOpenMedia() {
+    if (!exercise?.media_url) return;
+    Linking.openURL(exercise.media_url).catch(() =>
+      Alert.alert('Error', 'No pudimos abrir ese link. Revisá que esté bien escrito.')
+    );
+  }
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -76,6 +83,11 @@ export default function EditarEjercicioScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: exercise.title }} />
+      {exercise.media_url ? (
+        <View style={styles.mediaContainer}>
+          <AppButton label="Ver imagen o video" variant="secondary" onPress={handleOpenMedia} />
+        </View>
+      ) : null}
       <ExerciseForm
         submitLabel="Guardar cambios"
         onSubmit={handleSubmit}
@@ -104,5 +116,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
+  mediaContainer: { padding: spacing.lg, paddingBottom: 0 },
   deleteContainer: { padding: spacing.lg, paddingTop: 0 },
 });
