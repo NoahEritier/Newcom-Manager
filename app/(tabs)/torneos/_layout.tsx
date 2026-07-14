@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
+import { View } from 'react-native';
 
-import { ThemeToggleButton } from '../../../src/components/ThemeToggleButton';
+import { AnotadorButton } from '../../../src/components/AnotadorButton';
+import { HeaderActions } from '../../../src/components/HeaderActions';
 import { fonts, typography, useTheme } from '../../../src/theme';
 
 export default function TorneosLayout() {
@@ -12,10 +14,21 @@ export default function TorneosLayout() {
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         contentStyle: { backgroundColor: colors.background },
-        headerRight: () => <ThemeToggleButton />,
+        headerRight: () => <HeaderActions />,
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Torneos' }} />
+      <Stack.Screen
+        name="index"
+        options={{
+          title: 'Torneos',
+          headerRight: () => (
+            <View style={{ flexDirection: 'row' }}>
+              <AnotadorButton />
+              <HeaderActions />
+            </View>
+          ),
+        }}
+      />
       <Stack.Screen name="nuevo" options={{ title: 'Nuevo torneo' }} />
       <Stack.Screen name="[tournamentId]" options={{ title: 'Torneo' }} />
       <Stack.Screen name="partidos" options={{ title: 'Partidos sueltos' }} />

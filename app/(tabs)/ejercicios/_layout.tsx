@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { ThemeToggleButton } from '../../../src/components/ThemeToggleButton';
+import { HeaderActions } from '../../../src/components/HeaderActions';
 import { fonts, typography, useTheme } from '../../../src/theme';
 
 export default function EjerciciosLayout() {
@@ -12,7 +12,7 @@ export default function EjerciciosLayout() {
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         contentStyle: { backgroundColor: colors.background },
-        headerRight: () => <ThemeToggleButton />,
+        headerRight: () => <HeaderActions />,
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Ejercicios' }} />

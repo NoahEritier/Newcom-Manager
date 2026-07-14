@@ -10,7 +10,6 @@ import {
   listSessionDatesForTeam,
   type SessionSummary,
 } from '../../../src/db/local/attendance';
-import { signOut } from '../../../src/db/supabase/auth';
 import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
 import { useTeam } from '../../../src/hooks/useTeam';
 import { fonts, radius, spacing, typography, useTheme } from '../../../src/theme';
@@ -148,11 +147,6 @@ export default function AsistenciaScreen() {
           </Text>
         </Pressable>
       )}
-      ListFooterComponent={
-        <View style={styles.footer}>
-          <AppButton label="Cerrar sesión" variant="secondary" onPress={() => signOut()} />
-        </View>
-      }
     />
   );
 }
@@ -184,5 +178,4 @@ const styles = StyleSheet.create({
   },
   rowDate: { fontSize: typography.body, fontFamily: fonts.bold },
   rowSummary: { fontSize: typography.caption, fontFamily: fonts.regular },
-  footer: { padding: spacing.lg },
 });

@@ -99,22 +99,11 @@ export default function TorneosScreen() {
       ListHeaderComponent={
         <View style={styles.header}>
           <AppButton label="+ Agregar torneo" onPress={() => router.push('/torneos/nuevo')} />
-          <View style={styles.row}>
-            <View style={styles.rowField}>
-              <AppButton
-                label="Partidos sueltos"
-                variant="secondary"
-                onPress={() => router.push('/torneos/partidos')}
-              />
-            </View>
-            <View style={styles.rowField}>
-              <AppButton
-                label="Anotador"
-                variant="secondary"
-                onPress={() => router.push('/torneos/anotador')}
-              />
-            </View>
-          </View>
+          <AppButton
+            label="Partidos sueltos"
+            variant="secondary"
+            onPress={() => router.push('/torneos/partidos')}
+          />
 
           <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.summaryTitle, { color: colors.text }]}>Resumen de la temporada</Text>
@@ -194,8 +183,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { flexGrow: 1 },
   header: { padding: spacing.lg, gap: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  rowField: { flex: 1 },
   summaryCard: { borderRadius: radius, padding: spacing.md, gap: spacing.sm },
   summaryTitle: { fontSize: typography.body, fontFamily: fonts.bold },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
