@@ -289,13 +289,26 @@ del proyecto Supabase.
   build nuevo. El dev client (perfil `development`) todavía no se
   reconstruyó con `expo-updates` — no lo necesita para seguir developeando
   contra el bundler local.
-- **Primer APK `preview` (piloto) generado y validado**: build standalone
-  (no dev client), instalable directo sin depender de que corra el
-  bundler local. Segundo build hecho ya con EAS Update activo.
+- **Primer APK `preview` (piloto) generado**: build standalone (no dev
+  client). Los primeros dos builds (sin y con EAS Update) **crasheaban al
+  abrir, justo después del splash**: `.env` está en `.gitignore` a
+  propósito, así que nunca viaja al builder remoto de EAS — el bundle
+  standalone se armaba sin `EXPO_PUBLIC_SUPABASE_URL`/`ANON_KEY`, y
+  `src/db/supabase/client.ts` tira `throw new Error(...)` al importarse
+  (módulo raíz, se ejecuta antes de cualquier render), lo que en un build
+  de producción (sin red screen de desarrollo) crashea la app entera al
+  toque. En el dev client no se notaba porque ahí el JS lo sirve Metro
+  local, que sí tiene el `.env`. **Solución:** las mismas dos variables se
+  cargaron como EAS environment variables (`eas env:create`, visibilidad
+  plaintext — son la key `anon` pública de Supabase, no secreta) para los
+  tres ambientes (production/preview/development), así que de acá en más
+  cualquier build remoto las tiene sin depender del `.env` local. Tercer
+  build (`ab6836a7`) ya con esto corregido — validar que ahora sí entre.
 - **Estado del MVP: definido por el usuario como "completo cuando estas
   funcionalidades estén funcionando correctamente"** (la spec funcional de
   pantallas completa, no solo las features 1-6 originales). Falta: Google
-  Calendar (bloqueada por credenciales externas), validar el APK `preview`
-  a fondo en dispositivo (instalación limpia, no upgrade desde dev client),
-  y redactar el instructivo de instalación de una pantalla (sección 8.5)
-  antes de repartirlo a los entrenadores piloto.
+  Calendar (bloqueada por credenciales externas), confirmar que el APK
+  `preview` corregido entra bien en dispositivo (instalación limpia, no
+  upgrade desde dev client), y redactar el instructivo de instalación de
+  una pantalla (sección 8.5) antes de repartirlo a los entrenadores
+  piloto.
