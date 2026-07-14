@@ -268,10 +268,34 @@ del proyecto Supabase.
   por un rato — resuelto con 0002b_fix_routines_rls.sql (idempotente, seguro
   de re-correr). 0003 separó `tournaments` (ahora el evento/torneo) de
   `matches` (ex-`tournaments`, ahora el partido individual).
+- **Anotador (sección Torneos) movido a tab propia** en la navbar (antes
+  vivía como ícono dentro de Torneos). De paso se encontró y corrigió una
+  tab fantasma "index" que aparecía sin label/ícono en la barra —
+  `app/(tabs)/index.tsx` (el redirect a `/asistencia`) no estaba registrado
+  explícitamente en el `Tabs` layout, así que expo-router lo mostraba como
+  ruta implícita. Se registra con `options={{ href: null }}` para que el
+  redirect siga andando sin aparecer en la barra.
+- **"Cerrar sesión" movido** de botón suelto en Asistencia a una opción
+  dentro de un ícono de configuración (engranaje) en el header, junto al
+  toggle de tema, en las 4 tabs (`src/components/SettingsButton.tsx` +
+  `HeaderActions.tsx`).
+- **Repo pusheado a GitHub** (`NoahEritier/Newcom-Manager`, rama `master`).
+- **EAS Update activado**: se instaló `expo-updates` y se corrió
+  `eas update:configure` (agrega `runtimeVersion`/`updates.url` a
+  `app.json`). El perfil `preview` de `eas.json` ya tenía `channel: "preview"`
+  desde el scaffolding; ahora ese canal funciona de verdad. De acá en más,
+  los cambios de JS/UI se despliegan con `eas update --branch preview` (sin
+  reinstalar el APK); solo cambios nativos/config siguen necesitando un
+  build nuevo. El dev client (perfil `development`) todavía no se
+  reconstruyó con `expo-updates` — no lo necesita para seguir developeando
+  contra el bundler local.
+- **Primer APK `preview` (piloto) generado y validado**: build standalone
+  (no dev client), instalable directo sin depender de que corra el
+  bundler local. Segundo build hecho ya con EAS Update activo.
 - **Estado del MVP: definido por el usuario como "completo cuando estas
   funcionalidades estén funcionando correctamente"** (la spec funcional de
   pantallas completa, no solo las features 1-6 originales). Falta: Google
-  Calendar (bloqueada por credenciales externas), y probar en dispositivo
-  real toda la ampliación (equipo, calendario semanal, notas/edición de
-  asistencia, rutinas reutilizables, marcador de torneos, etc.) antes de
-  armar el build `preview` para el piloto.
+  Calendar (bloqueada por credenciales externas), validar el APK `preview`
+  a fondo en dispositivo (instalación limpia, no upgrade desde dev client),
+  y redactar el instructivo de instalación de una pantalla (sección 8.5)
+  antes de repartirlo a los entrenadores piloto.

@@ -42,6 +42,12 @@
         "projectId": "6a2c1e69-45b4-45d5-b450-599e5c41d91a"
       }
     },
-    "owner": "eritiernoah"
+    "owner": "eritiernoah",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6a2c1e69-45b4-45d5-b450-599e5c41d91a"
+    }
   }
 }
