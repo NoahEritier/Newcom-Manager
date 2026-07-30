@@ -1,3 +1,4 @@
+import type { FeeMode, RegistrationStatus, TournamentType } from '../../utils/tournamentTypes';
 import { supabase } from './client';
 
 export type Tournament = {
@@ -10,8 +11,13 @@ export type Tournament = {
   address: string | null;
   participating_teams: string | null;
   fee: number | null;
+  fee_mode: FeeMode | null;
   is_paid: boolean;
   funding_source: string | null;
+  flyer_url: string | null;
+  whatsapp_message: string | null;
+  type: TournamentType;
+  registration_status: RegistrationStatus;
   created_at: string;
 };
 
@@ -23,8 +29,13 @@ export type TournamentInput = {
   address: string | null;
   participating_teams: string | null;
   fee: number | null;
+  fee_mode: FeeMode | null;
   is_paid: boolean;
   funding_source: string | null;
+  flyer_url: string | null;
+  whatsapp_message: string | null;
+  type: TournamentType;
+  registration_status: RegistrationStatus;
 };
 
 export async function listTournaments(teamId: string): Promise<Tournament[]> {

@@ -9,7 +9,7 @@ import { fonts, spacing, typography, useTheme } from '../../../../src/theme';
 export default function NuevoPartidoScreen() {
   const { colors } = useTheme();
   const { teamId, isLoading } = useTeam();
-  const { tournamentId } = useLocalSearchParams<{ tournamentId?: string }>();
+  const { tournamentId } = useLocalSearchParams<{ tournamentId: string }>();
 
   if (isLoading) {
     return (
@@ -19,21 +19,17 @@ export default function NuevoPartidoScreen() {
     );
   }
 
-  if (!teamId) {
+  if (!teamId || !tournamentId) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={[styles.error, { color: colors.danger }]}>No pudimos encontrar tu equipo.</Text>
+        <Text style={[styles.error, { color: colors.danger }]}>No pudimos encontrar el torneo.</Text>
       </View>
     );
   }
 
   async function handleSubmit(input: Omit<MatchInput, 'tournament_id'>) {
-    await createMatch(teamId as string, { ...input, tournament_id: tournamentId ?? null });
-    if (tournamentId) {
-      router.replace({ pathname: '/torneos/[tournamentId]', params: { tournamentId } });
-    } else {
-      router.back();
-    }
+    await createMatch(teamId as string, { ...input, tournament_id: tournamentId });
+    router.replace({ pathname: '/torneos/[tournamentId]', params: { tournamentId } });
   }
 
   return <MatchForm submitLabel="Guardar partido" onSubmit={handleSubmit} />;

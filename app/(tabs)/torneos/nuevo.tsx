@@ -31,7 +31,7 @@ export default function NuevoTorneoScreen() {
     router.replace({ pathname: '/torneos/[tournamentId]', params: { tournamentId } });
   }
 
-  return <TournamentEventForm submitLabel="Guardar torneo" onSubmit={handleSubmit} />;
+  return <TournamentEventForm teamId={teamId} submitLabel="Guardar torneo" onSubmit={handleSubmit} />;
 }
 
 const styles = StyleSheet.create({

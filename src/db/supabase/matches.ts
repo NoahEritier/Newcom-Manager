@@ -5,7 +5,7 @@ export type HomeAway = 'local' | 'visitante';
 export type Match = {
   id: string;
   team_id: string;
-  tournament_id: string | null;
+  tournament_id: string;
   match_date: string;
   match_time: string | null;
   opponent: string;
@@ -19,7 +19,7 @@ export type Match = {
 };
 
 export type MatchInput = {
-  tournament_id: string | null;
+  tournament_id: string;
   match_date: string;
   match_time: string | null;
   opponent: string;
@@ -30,18 +30,6 @@ export type MatchInput = {
   score_opponent: number | null;
   result: string | null;
 };
-
-// Partidos sueltos: los que no pertenecen a ningún torneo (tournament_id = null).
-export async function listStandaloneMatches(teamId: string): Promise<Match[]> {
-  const { data, error } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('team_id', teamId)
-    .is('tournament_id', null)
-    .order('match_date', { ascending: false });
-  if (error) throw error;
-  return data;
-}
 
 export async function listMatchesForTournament(tournamentId: string): Promise<Match[]> {
   const { data, error } = await supabase

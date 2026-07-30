@@ -1,8 +1,13 @@
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
+import { DetailRow, DetailSection } from '../../../src/components/DetailView';
+import { StatusBadge } from '../../../src/components/StatusBadge';
 import { TournamentEventForm } from '../../../src/components/TournamentEventForm';
 import { listMatchesForTournament, type Match } from '../../../src/db/supabase/matches';
 import { listPlayers, type Player } from '../../../src/db/supabase/players';
@@ -17,12 +22,10 @@ import {
 } from '../../../src/db/supabase/tournaments';
 import { useTeam } from '../../../src/hooks/useTeam';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
+import { defaultTournamentWhatsappMessage } from '../../../src/utils/tournamentMessage';
+import { registrationStatusLabel, tournamentTypeLabel } from '../../../src/utils/tournamentTypes';
+import { formatDate, formatDateRange } from '../../../src/utils/formatDate';
 import { openWhatsAppMessage } from '../../../src/utils/whatsapp';
-
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
 
 export default function TorneoDetalleScreen() {
   const { colors } = useTheme();
@@ -37,6 +40,8 @@ export default function TorneoDetalleScreen() {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [savingAttendees, setSavingAttendees] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const load = useCallback(async () => {
     if (!teamId) return;
@@ -69,6 +74,7 @@ export default function TorneoDetalleScreen() {
   async function handleSubmit(input: TournamentInput) {
     await updateTournament(tournamentId, input);
     await load();
+    setEditing(false);
   }
 
   function confirmDelete() {
@@ -108,13 +114,47 @@ export default function TorneoDetalleScreen() {
 
   function handleShare() {
     if (!tournament) return;
-    const parts = [
-      `Convocatoria: ${tournament.title}`,
-      `Fecha: ${formatDate(tournament.start_date)}${tournament.end_date ? ` al ${formatDate(tournament.end_date)}` : ''}`,
-    ];
-    if (tournament.location) parts.push(`Lugar: ${tournament.location}`);
-    if (tournament.fee) parts.push(`Cuota: ${tournament.fee}`);
-    openWhatsAppMessage(parts.join('\n'));
+    const message =
+      tournament.whatsapp_message ||
+      defaultTournamentWhatsappMessage(
+        tournament.title,
+        tournament.start_date,
+        tournament.end_date,
+        tournament.location ?? ''
+      );
+
+    if (!tournament.flyer_url) {
+      openWhatsAppMessage(message);
+      return;
+    }
+
+    Alert.alert(
+      'Enviar convocatoria con flyer',
+      'Copiamos el mensaje al portapapeles. En la siguiente pantalla elegí WhatsApp para mandar la imagen, y pegá el mensaje en el chat.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Continuar', onPress: () => shareFlyerWithMessage(tournament.flyer_url as string, message) },
+      ]
+    );
+  }
+
+  async function shareFlyerWithMessage(flyerUrl: string, message: string) {
+    setSharing(true);
+    try {
+      await Clipboard.setStringAsync(message);
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Error', 'Este dispositivo no puede compartir archivos.');
+        return;
+      }
+      const localUri = `${FileSystem.cacheDirectory}flyer-${tournamentId}.jpg`;
+      const { uri } = await FileSystem.downloadAsync(flyerUrl, localUri);
+      await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: 'Enviar flyer del torneo' });
+    } catch {
+      Alert.alert('Error', 'No pudimos preparar el flyer para compartir. Probá cuando tengas señal.');
+    } finally {
+      setSharing(false);
+    }
   }
 
   if (loading) {
@@ -133,6 +173,38 @@ export default function TorneoDetalleScreen() {
     );
   }
 
+  if (editing) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ title: tournament.title }} />
+        <TournamentEventForm
+          teamId={tournament.team_id}
+          submitLabel="Guardar cambios"
+          onSubmit={handleSubmit}
+          initialValue={{
+            title: tournament.title,
+            start_date: tournament.start_date,
+            end_date: tournament.end_date,
+            location: tournament.location,
+            address: tournament.address,
+            participating_teams: tournament.participating_teams,
+            fee: tournament.fee,
+            is_paid: tournament.is_paid,
+            funding_source: tournament.funding_source,
+            flyer_url: tournament.flyer_url,
+            whatsapp_message: tournament.whatsapp_message,
+            fee_mode: tournament.fee_mode,
+            type: tournament.type,
+            registration_status: tournament.registration_status,
+          }}
+        />
+        <View style={styles.cancelContainer}>
+          <AppButton label="Cancelar" variant="secondary" onPress={() => setEditing(false)} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <FlatList
       data={matches}
@@ -141,25 +213,46 @@ export default function TorneoDetalleScreen() {
       ListHeaderComponent={
         <View style={styles.headerBlock}>
           <Stack.Screen options={{ title: tournament.title }} />
-          <AppButton label="Enviar convocatoria por WhatsApp" variant="secondary" onPress={handleShare} />
 
-          <TournamentEventForm
-            submitLabel="Guardar datos del torneo"
-            onSubmit={handleSubmit}
-            initialValue={{
-              title: tournament.title,
-              start_date: tournament.start_date,
-              end_date: tournament.end_date,
-              location: tournament.location,
-              address: tournament.address,
-              participating_teams: tournament.participating_teams,
-              fee: tournament.fee,
-              is_paid: tournament.is_paid,
-              funding_source: tournament.funding_source,
-            }}
-          />
+          {tournament.flyer_url ? <Image source={{ uri: tournament.flyer_url }} style={styles.flyer} /> : null}
 
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={[styles.title, { color: colors.text }]}>{tournament.title}</Text>
+          <View style={styles.badgeRow}>
+            <StatusBadge label={tournamentTypeLabel(tournament.type)} />
+            <StatusBadge
+              label={registrationStatusLabel(tournament.registration_status)}
+              tone={tournament.registration_status === 'confirmado' ? 'success' : 'default'}
+            />
+          </View>
+
+          <DetailSection>
+            <DetailRow label="Fecha" value={formatDateRange(tournament.start_date, tournament.end_date)} />
+            <DetailRow label="Lugar" value={tournament.location} />
+            <DetailRow label="Dirección" value={tournament.address} />
+            <DetailRow label="Equipos que participan" value={tournament.participating_teams} />
+            <DetailRow
+              label="Tarifa de inscripción"
+              value={
+                tournament.fee != null
+                  ? `${tournament.fee}${tournament.fee_mode ? (tournament.fee_mode === 'individual' ? ' por jugador' : ' por equipo') : ''} · ${tournament.is_paid ? 'Pagado' : 'Pendiente de pago'}`
+                  : null
+              }
+            />
+            <DetailRow label="¿De dónde sale la plata?" value={tournament.funding_source} />
+          </DetailSection>
+
+          <View style={styles.actions}>
+            <AppButton label="Editar" onPress={() => setEditing(true)} />
+            <AppButton
+              label="Enviar convocatoria por WhatsApp"
+              variant="secondary"
+              onPress={handleShare}
+              loading={sharing}
+              disabled={sharing}
+            />
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
             Quiénes van {savingAttendees ? '(guardando...)' : `(${attendeeIds.size})`}
           </Text>
           {players.length === 0 ? (
@@ -188,9 +281,11 @@ export default function TorneoDetalleScreen() {
             })
           )}
 
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>Partidos</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
+            {tournament.type === 'liga' ? 'Jornadas' : 'Partidos'}
+          </Text>
           <AppButton
-            label="+ Agregar partido"
+            label={tournament.type === 'liga' ? '+ Agregar jornada' : '+ Agregar partido'}
             onPress={() =>
               router.push({ pathname: '/torneos/partido/nuevo', params: { tournamentId } })
             }
@@ -199,7 +294,9 @@ export default function TorneoDetalleScreen() {
       }
       ListEmptyComponent={
         <Text style={[styles.emptyText, { color: colors.textMuted, paddingHorizontal: spacing.lg }]}>
-          Todavía no cargaste partidos para este torneo.
+          {tournament.type === 'liga'
+            ? 'Todavía no cargaste jornadas para esta liga.'
+            : 'Todavía no cargaste partidos para este torneo.'}
         </Text>
       }
       renderItem={({ item }) => (
@@ -231,9 +328,14 @@ export default function TorneoDetalleScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { flexGrow: 1 },
-  headerBlock: { padding: spacing.lg, gap: spacing.md },
+  headerBlock: { padding: spacing.lg, gap: spacing.sm },
+  flyer: { width: '100%', aspectRatio: 1.4, borderRadius: radius, marginBottom: spacing.sm },
+  title: { fontSize: typography.screenTitle, fontFamily: fonts.bold },
+  badgeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  actions: { gap: spacing.sm, marginTop: spacing.sm },
   sectionTitle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular },
   attendeeRow: {
@@ -256,5 +358,6 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: typography.body, fontFamily: fonts.bold },
   rowSub: { fontSize: typography.caption, fontFamily: fonts.regular },
   footer: { padding: spacing.lg },
+  cancelContainer: { padding: spacing.lg, paddingTop: 0 },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
 });
