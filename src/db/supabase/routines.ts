@@ -1,12 +1,23 @@
 import { supabase } from './client';
 
+export type RoutineLevel = 'principiante' | 'intermedio' | 'avanzado';
+
 export type Routine = {
   id: string;
   coach_id: string;
   team_id: string | null;
   title: string;
   is_favorite: boolean;
+  level: RoutineLevel | null;
+  next_routine_id: string | null;
   created_at: string;
+};
+
+export type RoutineUpdateInput = {
+  title: string;
+  is_favorite: boolean;
+  level: RoutineLevel | null;
+  next_routine_id: string | null;
 };
 
 export type RoutineExercise = {
@@ -16,7 +27,16 @@ export type RoutineExercise = {
   position: number;
   duration_minutes: number | null;
   notes: string | null;
+  adaptations: string | null;
+  variants: string | null;
   exercise_title: string;
+};
+
+export type RoutineExerciseDetails = {
+  duration_minutes: number | null;
+  notes: string | null;
+  adaptations: string | null;
+  variants: string | null;
 };
 
 export async function listRoutines(coachId: string): Promise<Routine[]> {
@@ -50,10 +70,7 @@ export async function createRoutine(
   return data.id;
 }
 
-export async function updateRoutine(
-  routineId: string,
-  input: { title: string; is_favorite: boolean }
-): Promise<void> {
+export async function updateRoutine(routineId: string, input: RoutineUpdateInput): Promise<void> {
   const { error } = await supabase.from('routines').update(input).eq('id', routineId);
   if (error) throw error;
 }
@@ -66,9 +83,28 @@ export async function deleteRoutine(routineId: string): Promise<void> {
 export async function duplicateRoutine(routineId: string): Promise<string> {
   const original = await getRoutine(routineId);
   const exercises = await listRoutineExercises(routineId);
-  const newId = await createRoutine(original.coach_id, original.team_id, `${original.title} (copia)`);
+  const title = `${original.title} (copia)`;
+  const newId = await createRoutine(original.coach_id, original.team_id, title);
+  // La progresión (next_routine_id) no se copia: es un vínculo propio de la
+  // rutina original, no algo que deba heredar automáticamente su copia.
+  if (original.level) {
+    await updateRoutine(newId, {
+      title,
+      is_favorite: false,
+      level: original.level,
+      next_routine_id: null,
+    });
+  }
   for (const ex of exercises) {
-    await addExerciseToRoutine(newId, ex.exercise_id, ex.position, ex.duration_minutes, ex.notes);
+    await addExerciseToRoutine(
+      newId,
+      ex.exercise_id,
+      ex.position,
+      ex.duration_minutes,
+      ex.notes,
+      ex.adaptations,
+      ex.variants
+    );
   }
   return newId;
 }
@@ -76,7 +112,7 @@ export async function duplicateRoutine(routineId: string): Promise<string> {
 export async function listRoutineExercises(routineId: string): Promise<RoutineExercise[]> {
   const { data, error } = await supabase
     .from('routine_exercises')
-    .select('id, routine_id, exercise_id, position, duration_minutes, notes, exercises(title)')
+    .select('id, routine_id, exercise_id, position, duration_minutes, notes, adaptations, variants, exercises(title)')
     .eq('routine_id', routineId)
     .order('position', { ascending: true });
   if (error) throw error;
@@ -87,6 +123,8 @@ export async function listRoutineExercises(routineId: string): Promise<RoutineEx
     position: row.position,
     duration_minutes: row.duration_minutes,
     notes: row.notes,
+    adaptations: row.adaptations,
+    variants: row.variants,
     exercise_title: row.exercises?.title ?? '',
   }));
 }
@@ -96,7 +134,9 @@ export async function addExerciseToRoutine(
   exerciseId: string,
   position: number,
   durationMinutes: number | null = null,
-  notes: string | null = null
+  notes: string | null = null,
+  adaptations: string | null = null,
+  variants: string | null = null
 ): Promise<void> {
   const { error } = await supabase.from('routine_exercises').insert({
     routine_id: routineId,
@@ -104,7 +144,17 @@ export async function addExerciseToRoutine(
     position,
     duration_minutes: durationMinutes,
     notes,
+    adaptations,
+    variants,
   });
+  if (error) throw error;
+}
+
+export async function updateRoutineExercise(
+  routineExerciseId: string,
+  input: RoutineExerciseDetails
+): Promise<void> {
+  const { error } = await supabase.from('routine_exercises').update(input).eq('id', routineExerciseId);
   if (error) throw error;
 }
 

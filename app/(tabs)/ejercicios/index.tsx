@@ -8,6 +8,7 @@ import { listExercises, type Exercise, type ExerciseCategory } from '../../../sr
 import { useAuth } from '../../../src/hooks/useAuth';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
 import { categoryLabel, EXERCISE_CATEGORIES } from '../../../src/utils/exerciseCategories';
+import { MUSCLE_GROUPS_JOINTS, MUSCLE_GROUPS_MUSCLES } from '../../../src/utils/muscleGroups';
 
 export default function EjerciciosScreen() {
   const { colors } = useTheme();
@@ -18,6 +19,14 @@ export default function EjerciciosScreen() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ExerciseCategory | null>(null);
+  const [muscleGroupFilter, setMuscleGroupFilter] = useState<string[]>([]);
+  const [showMuscleFilter, setShowMuscleFilter] = useState(false);
+
+  function toggleMuscleGroupFilter(value: string) {
+    setMuscleGroupFilter((current) =>
+      current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
+    );
+  }
 
   const load = useCallback(async () => {
     if (!coachId) return;
@@ -42,10 +51,13 @@ export default function EjerciciosScreen() {
     const query = search.trim().toLowerCase();
     return exercises.filter((e) => {
       if (categoryFilter && e.category !== categoryFilter) return false;
+      if (muscleGroupFilter.length > 0 && !e.muscle_groups.some((g) => muscleGroupFilter.includes(g))) {
+        return false;
+      }
       if (query && !e.title.toLowerCase().includes(query)) return false;
       return true;
     });
-  }, [exercises, search, categoryFilter]);
+  }, [exercises, search, categoryFilter, muscleGroupFilter]);
 
   if (loading && exercises.length === 0) {
     return (
@@ -116,6 +128,38 @@ export default function EjerciciosScreen() {
               );
             })}
           </View>
+
+          <Pressable onPress={() => setShowMuscleFilter((v) => !v)} style={styles.toggleFilterButton}>
+            <Text style={[styles.toggleFilterLabel, { color: colors.link }]}>
+              {showMuscleFilter ? 'Ocultar filtro por grupo muscular' : 'Filtrar por grupo muscular'}
+              {muscleGroupFilter.length > 0 ? ` (${muscleGroupFilter.length})` : ''}
+            </Text>
+          </Pressable>
+
+          {showMuscleFilter ? (
+            <View style={styles.pillRow}>
+              {[...MUSCLE_GROUPS_MUSCLES, ...MUSCLE_GROUPS_JOINTS].map((option) => {
+                const selected = muscleGroupFilter.includes(option.value);
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => toggleMuscleGroupFilter(option.value)}
+                    style={[
+                      styles.pill,
+                      { borderColor: colors.border, backgroundColor: colors.surface },
+                      selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
         </View>
       }
       ListEmptyComponent={
@@ -158,6 +202,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  toggleFilterButton: { minHeight: minTouchSize, justifyContent: 'center' },
+  toggleFilterLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   row: {

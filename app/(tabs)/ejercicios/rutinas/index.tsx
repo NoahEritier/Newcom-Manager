@@ -6,6 +6,7 @@ import { AppButton } from '../../../../src/components/AppButton';
 import { listRoutines, updateRoutine, type Routine } from '../../../../src/db/supabase/routines';
 import { useAuth } from '../../../../src/hooks/useAuth';
 import { fonts, spacing, typography, useTheme } from '../../../../src/theme';
+import { levelLabel } from '../../../../src/utils/routineLevels';
 
 export default function RutinasScreen() {
   const { colors } = useTheme();
@@ -35,7 +36,12 @@ export default function RutinasScreen() {
   );
 
   async function toggleFavorite(routine: Routine) {
-    await updateRoutine(routine.id, { title: routine.title, is_favorite: !routine.is_favorite });
+    await updateRoutine(routine.id, {
+      title: routine.title,
+      is_favorite: !routine.is_favorite,
+      level: routine.level,
+      next_routine_id: routine.next_routine_id,
+    });
     load();
   }
 
@@ -81,6 +87,9 @@ export default function RutinasScreen() {
             }
           >
             <Text style={[styles.rowTitle, { color: colors.text }]}>{item.title}</Text>
+            {item.level ? (
+              <Text style={[styles.rowSub, { color: colors.textMuted }]}>{levelLabel(item.level)}</Text>
+            ) : null}
           </Pressable>
           <Pressable onPress={() => toggleFavorite(item)} style={styles.favButton}>
             <Text style={[styles.favIcon, { color: item.is_favorite ? colors.accent : colors.textMuted }]}>
@@ -106,8 +115,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  rowMain: { flex: 1, paddingVertical: spacing.md },
+  rowMain: { flex: 1, paddingVertical: spacing.md, gap: 2 },
   rowTitle: { fontSize: typography.body, fontFamily: fonts.bold },
+  rowSub: { fontSize: typography.caption, fontFamily: fonts.regular },
   favButton: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   favIcon: { fontSize: 22 },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },

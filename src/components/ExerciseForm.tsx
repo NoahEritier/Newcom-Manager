@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseCategory, ExerciseInput } from '../db/supabase/exercises';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
 import { EXERCISE_CATEGORIES } from '../utils/exerciseCategories';
+import { MUSCLE_GROUPS_JOINTS, MUSCLE_GROUPS_MUSCLES } from '../utils/muscleGroups';
 import { AppButton } from './AppButton';
 import { AppTextInput } from './AppTextInput';
 
@@ -23,8 +24,15 @@ export function ExerciseForm({ initialValue, onSubmit, submitLabel }: Props) {
     initialValue?.duration_minutes != null ? String(initialValue.duration_minutes) : ''
   );
   const [materials, setMaterials] = useState(initialValue?.materials ?? '');
+  const [muscleGroups, setMuscleGroups] = useState<string[]>(initialValue?.muscle_groups ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleMuscleGroup(value: string) {
+    setMuscleGroups((current) =>
+      current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
+    );
+  }
 
   async function handleSubmit() {
     const trimmedTitle = title.trim();
@@ -43,6 +51,7 @@ export function ExerciseForm({ initialValue, onSubmit, submitLabel }: Props) {
         category,
         duration_minutes: Number.isFinite(parsedDuration) ? parsedDuration : null,
         materials: materials.trim() || null,
+        muscle_groups: muscleGroups,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos guardar. Probá de nuevo.');
@@ -82,13 +91,57 @@ export function ExerciseForm({ initialValue, onSubmit, submitLabel }: Props) {
         })}
       </View>
 
-      <Text style={[styles.label, { color: colors.textMuted }]}>Duración estimada (minutos)</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>Duración orientativa (minutos, opcional)</Text>
       <AppTextInput
         value={durationMinutes}
         onChangeText={setDurationMinutes}
         placeholder="Ej: 15"
         keyboardType="number-pad"
       />
+
+      <Text style={[styles.label, { color: colors.textMuted }]}>Grupo muscular que trabaja</Text>
+      <View style={styles.pillRow}>
+        {MUSCLE_GROUPS_MUSCLES.map((option) => {
+          const selected = muscleGroups.includes(option.value);
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => toggleMuscleGroup(option.value)}
+              style={[
+                styles.pill,
+                { borderColor: colors.border, backgroundColor: colors.surface },
+                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
+            >
+              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={[styles.label, { color: colors.textMuted }]}>Articulación involucrada</Text>
+      <View style={styles.pillRow}>
+        {MUSCLE_GROUPS_JOINTS.map((option) => {
+          const selected = muscleGroups.includes(option.value);
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => toggleMuscleGroup(option.value)}
+              style={[
+                styles.pill,
+                { borderColor: colors.border, backgroundColor: colors.surface },
+                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
+            >
+              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Materiales</Text>
       <AppTextInput value={materials} onChangeText={setMaterials} placeholder="Ej: conos, pelotas" />

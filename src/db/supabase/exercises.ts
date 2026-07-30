@@ -11,6 +11,7 @@ export type Exercise = {
   category: ExerciseCategory | null;
   duration_minutes: number | null;
   materials: string | null;
+  muscle_groups: string[];
   created_at: string;
 };
 
@@ -21,6 +22,7 @@ export type ExerciseInput = {
   category: ExerciseCategory | null;
   duration_minutes: number | null;
   materials: string | null;
+  muscle_groups: string[];
 };
 
 export async function listExercises(coachId: string): Promise<Exercise[]> {
