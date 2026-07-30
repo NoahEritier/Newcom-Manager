@@ -9,10 +9,9 @@ import {
   listRecentSessions,
   listSessionDatesForTeam,
   type SessionSummary,
-} from '../../../src/db/local/attendance';
-import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
+} from '../../../src/db/supabase/attendance';
 import { useTeam } from '../../../src/hooks/useTeam';
-import { fonts, radius, spacing, typography, useTheme } from '../../../src/theme';
+import { fonts, spacing, typography, useTheme } from '../../../src/theme';
 import { openWhatsAppMessage } from '../../../src/utils/whatsapp';
 
 function todayIso() {
@@ -32,22 +31,28 @@ function handleShareTraining() {
 export default function AsistenciaScreen() {
   const { colors } = useTheme();
   const { team, teamId, isLoading: teamLoading } = useTeam();
-  const { isSyncing, pendingCount, error: syncError, syncNow } = useAttendanceSync(teamId);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionDates, setSessionDates] = useState<Set<string>>(new Set());
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [openingDate, setOpeningDate] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     if (!teamId) return;
     setLoadingSessions(true);
-    const [recent, dates] = await Promise.all([
-      listRecentSessions(teamId),
-      listSessionDatesForTeam(teamId),
-    ]);
-    setSessions(recent);
-    setSessionDates(new Set(dates));
-    setLoadingSessions(false);
+    setError(null);
+    try {
+      const [recent, dates] = await Promise.all([
+        listRecentSessions(teamId),
+        listSessionDatesForTeam(teamId),
+      ]);
+      setSessions(recent);
+      setSessionDates(new Set(dates));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No pudimos cargar las sesiones. Revisá tu conexión.');
+    } finally {
+      setLoadingSessions(false);
+    }
   }, [teamId]);
 
   useFocusEffect(
@@ -62,6 +67,8 @@ export default function AsistenciaScreen() {
     try {
       const session = await getOrCreateSessionForDate(teamId, dateIso, team?.default_location ?? null);
       router.push({ pathname: '/asistencia/[sessionId]', params: { sessionId: session.id } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No pudimos abrir la sesión. Revisá tu conexión.');
     } finally {
       setOpeningDate(null);
     }
@@ -82,21 +89,7 @@ export default function AsistenciaScreen() {
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.background }]}
       ListHeaderComponent={
         <View style={styles.header}>
-          <View style={[styles.syncBanner, { backgroundColor: colors.surface }]}>
-            {isSyncing ? (
-              <Text style={[styles.syncText, { color: colors.textMuted }]}>Sincronizando…</Text>
-            ) : pendingCount > 0 ? (
-              <Text style={[styles.syncText, { color: colors.textMuted }]}>
-                {pendingCount} cambios pendientes de subir
-              </Text>
-            ) : (
-              <Text style={[styles.syncText, { color: colors.success }]}>Todo sincronizado</Text>
-            )}
-            <Pressable onPress={syncNow} disabled={isSyncing}>
-              <Text style={[styles.syncAction, { color: colors.link }]}>Sincronizar ahora</Text>
-            </Pressable>
-          </View>
-          {syncError ? <Text style={[styles.error, { color: colors.danger }]}>{syncError}</Text> : null}
+          {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
 
           <WeekCalendar
             trainingDays={team?.training_days ?? []}
@@ -143,7 +136,6 @@ export default function AsistenciaScreen() {
           </Text>
           <Text style={[styles.rowSummary, { color: colors.textMuted }]}>
             {item.present_count} presentes · {item.absent_count} ausentes
-            {item.sync_status !== 'synced' ? ' · sin subir' : ''}
           </Text>
         </Pressable>
       )}
@@ -155,15 +147,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { flexGrow: 1 },
   header: { padding: spacing.lg, gap: spacing.md },
-  syncBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRadius: radius,
-    padding: spacing.md,
-  },
-  syncText: { fontSize: typography.caption, fontFamily: fonts.bold },
-  syncAction: { fontSize: typography.caption, fontFamily: fonts.bold },
   error: { fontSize: typography.caption, fontFamily: fonts.regular },
   sectionTitle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold, marginTop: spacing.sm },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },

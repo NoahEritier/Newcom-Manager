@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
-import { getAttendanceStats, type PlayerAttendanceStat } from '../../../src/db/local/attendance';
+import { getAttendanceStats, type PlayerAttendanceStat } from '../../../src/db/supabase/attendance';
 import { useTeam } from '../../../src/hooks/useTeam';
 import { fonts, spacing, typography, useTheme } from '../../../src/theme';
 
@@ -40,7 +40,7 @@ export default function PorcentajeAsistenciaScreen() {
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.background }]}
       ListHeaderComponent={
         <Text style={[styles.hint, { color: colors.textMuted }]}>
-          Basado en las sesiones de los últimos 30 días guardadas en este dispositivo.
+          Basado en las sesiones de los últimos 30 días.
         </Text>
       }
       ListEmptyComponent={

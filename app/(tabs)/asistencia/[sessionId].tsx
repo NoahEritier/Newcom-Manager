@@ -6,23 +6,21 @@ import { AppButton } from '../../../src/components/AppButton';
 import { AppTextInput } from '../../../src/components/AppTextInput';
 import { TimeField } from '../../../src/components/TimeField';
 import {
-  deleteSessionLocal,
+  deleteSession,
   getRecordsForSession,
   getSession,
   markAllPresent,
   setAttendance,
   setSessionDetails,
-  type LocalRecord,
-  type LocalSession,
-} from '../../../src/db/local/attendance';
-import { getCachedPlayers, type CachedPlayer } from '../../../src/db/local/playersCache';
-import { useAttendanceSync } from '../../../src/hooks/useAttendanceSync';
-import { deleteSessionRemoteIfSynced } from '../../../src/sync/attendanceSync';
+  type AttendanceRecord,
+  type AttendanceSession,
+} from '../../../src/db/supabase/attendance';
+import { listPlayers, type Player } from '../../../src/db/supabase/players';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
 
 type PresenceMap = Record<string, boolean | undefined>;
 type NoteMap = Record<string, string>;
-type EditedMap = Record<string, number | null>;
+type EditedMap = Record<string, string | null>;
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split('-');
@@ -32,42 +30,47 @@ function formatDate(iso: string) {
 export default function TomarAsistenciaScreen() {
   const { colors } = useTheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
-  const [session, setSession] = useState<LocalSession | null>(null);
-  const [players, setPlayers] = useState<CachedPlayer[]>([]);
+  const [session, setSession] = useState<AttendanceSession | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [presence, setPresence] = useState<PresenceMap>({});
   const [notes, setNotes] = useState<NoteMap>({});
   const [edited, setEdited] = useState<EditedMap>({});
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const { isSyncing, pendingCount, syncNow, refreshPendingCount } = useAttendanceSync(
-    session?.team_id ?? null
-  );
 
   const load = useCallback(async () => {
-    const foundSession = await getSession(sessionId);
-    if (!foundSession) {
+    setLoading(true);
+    setError(null);
+    try {
+      const foundSession = await getSession(sessionId);
+      if (!foundSession) {
+        setLoading(false);
+        return;
+      }
+      setSession(foundSession);
+      const [teamPlayers, records] = await Promise.all([
+        listPlayers(foundSession.team_id),
+        getRecordsForSession(sessionId),
+      ]);
+      setPlayers(teamPlayers);
+      const presenceMap: PresenceMap = {};
+      const noteMap: NoteMap = {};
+      const editedMap: EditedMap = {};
+      for (const record of records as AttendanceRecord[]) {
+        presenceMap[record.player_id] = record.present;
+        noteMap[record.player_id] = record.note ?? '';
+        editedMap[record.player_id] = record.edited_at;
+      }
+      setPresence(presenceMap);
+      setNotes(noteMap);
+      setEdited(editedMap);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No pudimos cargar la sesión. Revisá tu conexión.');
+    } finally {
       setLoading(false);
-      return;
     }
-    setSession(foundSession);
-    const [cachedPlayers, records] = await Promise.all([
-      getCachedPlayers(foundSession.team_id),
-      getRecordsForSession(sessionId),
-    ]);
-    setPlayers(cachedPlayers);
-    const presenceMap: PresenceMap = {};
-    const noteMap: NoteMap = {};
-    const editedMap: EditedMap = {};
-    for (const record of records as LocalRecord[]) {
-      presenceMap[record.player_id] = record.present === 1;
-      noteMap[record.player_id] = record.note ?? '';
-      editedMap[record.player_id] = record.edited_at;
-    }
-    setPresence(presenceMap);
-    setNotes(noteMap);
-    setEdited(editedMap);
-    setLoading(false);
   }, [sessionId]);
 
   useEffect(() => {
@@ -75,9 +78,14 @@ export default function TomarAsistenciaScreen() {
   }, [load]);
 
   async function handleMark(playerId: string, present: boolean) {
+    const previous = presence[playerId];
     setPresence((prev) => ({ ...prev, [playerId]: present }));
-    await setAttendance(sessionId, playerId, present);
-    await refreshPendingCount();
+    try {
+      await setAttendance(sessionId, playerId, present);
+    } catch (e) {
+      setPresence((prev) => ({ ...prev, [playerId]: previous }));
+      Alert.alert('Error', 'No pudimos guardar la asistencia. Revisá tu conexión e intentá de nuevo.');
+    }
   }
 
   async function handleNoteChange(playerId: string, note: string) {
@@ -86,23 +94,33 @@ export default function TomarAsistenciaScreen() {
 
   async function handleNoteBlur(playerId: string) {
     const present = presence[playerId] ?? false;
-    await setAttendance(sessionId, playerId, present, notes[playerId] || null);
-    await refreshPendingCount();
+    try {
+      await setAttendance(sessionId, playerId, present, notes[playerId] || null);
+    } catch {
+      Alert.alert('Error', 'No pudimos guardar la nota. Revisá tu conexión e intentá de nuevo.');
+    }
   }
 
   async function handleMarkAllPresent() {
     if (players.length === 0) return;
-    await markAllPresent(sessionId, players.map((p) => p.id));
-    const nextPresence: PresenceMap = {};
-    for (const p of players) nextPresence[p.id] = true;
-    setPresence(nextPresence);
-    await refreshPendingCount();
+    try {
+      await markAllPresent(sessionId, players.map((p) => p.id));
+      const nextPresence: PresenceMap = {};
+      for (const p of players) nextPresence[p.id] = true;
+      setPresence(nextPresence);
+    } catch {
+      Alert.alert('Error', 'No pudimos marcar a todos presentes. Revisá tu conexión e intentá de nuevo.');
+    }
   }
 
   async function handleSessionDetailsChange(next: { session_time: string | null; location: string | null }) {
     if (!session) return;
-    await setSessionDetails(session.id, next);
-    setSession({ ...session, ...next });
+    try {
+      await setSessionDetails(session.id, next);
+      setSession({ ...session, ...next });
+    } catch {
+      Alert.alert('Error', 'No pudimos guardar el cambio. Revisá tu conexión e intentá de nuevo.');
+    }
   }
 
   function confirmDeleteSession() {
@@ -120,8 +138,7 @@ export default function TomarAsistenciaScreen() {
     if (!session) return;
     setDeleting(true);
     try {
-      await deleteSessionRemoteIfSynced(session);
-      await deleteSessionLocal(session.id);
+      await deleteSession(session.id);
       router.replace('/asistencia');
     } catch (e) {
       setDeleting(false);
@@ -137,10 +154,10 @@ export default function TomarAsistenciaScreen() {
     );
   }
 
-  if (!session) {
+  if (error || !session) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={[styles.error, { color: colors.danger }]}>No encontramos esta sesión.</Text>
+        <Text style={[styles.error, { color: colors.danger }]}>{error ?? 'No encontramos esta sesión.'}</Text>
       </View>
     );
   }
@@ -148,20 +165,6 @@ export default function TomarAsistenciaScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: formatDate(session.session_date) }} />
-      <View style={[styles.syncBanner, { backgroundColor: colors.surface }]}>
-        {isSyncing ? (
-          <Text style={[styles.syncText, { color: colors.textMuted }]}>Sincronizando…</Text>
-        ) : pendingCount > 0 ? (
-          <Text style={[styles.syncText, { color: colors.textMuted }]}>
-            {pendingCount} cambios pendientes de subir
-          </Text>
-        ) : (
-          <Text style={[styles.syncText, { color: colors.success }]}>Todo sincronizado</Text>
-        )}
-        <Pressable onPress={syncNow} disabled={isSyncing}>
-          <Text style={[styles.syncAction, { color: colors.link }]}>Sincronizar ahora</Text>
-        </Pressable>
-      </View>
 
       <View style={styles.detailsContainer}>
         <View style={styles.detailsRow}>
@@ -188,16 +191,10 @@ export default function TomarAsistenciaScreen() {
         <AppButton
           label="Rutina de hoy"
           variant="secondary"
-          disabled={session.sync_status !== 'synced'}
           onPress={() =>
             router.push({ pathname: '/asistencia/rutina/[sessionId]', params: { sessionId: session.id } })
           }
         />
-        {session.sync_status !== 'synced' ? (
-          <Text style={[styles.routineHint, { color: colors.textMuted }]}>
-            Sincronizá la sesión para poder armar la rutina.
-          </Text>
-        ) : null}
         <AppButton label="Marcar todos presentes" variant="secondary" onPress={handleMarkAllPresent} />
       </View>
 
@@ -298,23 +295,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center', padding: spacing.lg },
-  syncBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    margin: spacing.lg,
-    marginBottom: 0,
-    borderRadius: radius,
-    padding: spacing.md,
-  },
-  syncText: { fontSize: typography.caption, fontFamily: fonts.bold },
-  syncAction: { fontSize: typography.caption, fontFamily: fonts.bold },
-  detailsContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.xs },
+  detailsContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.xs },
   detailsRow: { flexDirection: 'row', gap: spacing.md },
   detailsField: { flex: 1 },
   smallLabel: { fontSize: typography.caption, fontFamily: fonts.bold, marginBottom: spacing.xs },
   routineButtonContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm },
-  routineHint: { fontSize: typography.caption, fontFamily: fonts.regular },
   listContent: { padding: spacing.lg, gap: spacing.sm },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },

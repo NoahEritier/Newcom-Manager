@@ -43,11 +43,7 @@ export default function RutinaDeSesionScreen() {
       setLinked(linkedRoutines);
       setLibrary(allRoutines);
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : 'No pudimos cargar la rutina. Si tomaste la asistencia offline, sincronizá primero.'
-      );
+      setError(e instanceof Error ? e.message : 'No pudimos cargar la rutina. Revisá tu conexión.');
     } finally {
       setLoading(false);
     }
