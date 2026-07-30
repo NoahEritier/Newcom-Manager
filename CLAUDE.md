@@ -35,19 +35,11 @@ sección 8.5 para el detalle de cómo armar ese build.
   recién cuando pasemos a la fase de publicación oficial.
 - **Backend/DB:** Supabase (ya existe una cuenta creada — pedir las credenciales/URL
   del proyecto antes de generar el `.env`, no inventarlas).
-- **Local-first / Offline:** Supabase no tiene offline-sync nativo tan maduro como
-  Firebase, así que la estrategia es:
-  - Base de datos local con **WatermelonDB** o **op-sqlite / expo-sqlite** como cache
-    local de escritura inmediata.
-  - Cola de sincronización propia: cada acción offline (tomar asistencia, crear
-    jugador, etc.) se guarda localmente con estado `pending_sync` y un timestamp, y
-    se reintenta subir a Supabase cuando vuelve la conexión (usar `NetInfo` de
-    React Native para detectar conectividad).
-  - Definir estrategia de resolución de conflictos simple: **last-write-wins** por
-    campo, salvo asistencia (que es append-only, no debería tener conflictos reales).
-  - Este punto es el más delicado del proyecto: antes de implementarlo, proponeme
-    el diseño de la cola de sync y el esquema de las tablas `_local` antes de escribir
-    código.
+- **Online-only (decisión revertida, ver sección 9):** la app arrancó con una
+  estrategia local-first (cache en `expo-sqlite` + cola de sync propia para
+  Asistencia), pero se descartó a pedido del usuario — la app ahora requiere
+  conexión a internet para todo, sin excepción. No reintroducir cache local
+  ni cola de sync sin que el usuario lo pida explícitamente de nuevo.
 - **Autenticación:** Supabase Auth con **Phone OTP (SMS)**. Sin contraseñas.
 - **Pagos/Suscripción:** RevenueCat (integrar cuando el MVP funcional esté listo,
   no es prioridad de la primera iteración, y no aplica hasta que haya tienda).
@@ -312,3 +304,40 @@ del proyecto Supabase.
   upgrade desde dev client), y redactar el instructivo de instalación de
   una pantalla (sección 8.5) antes de repartirlo a los entrenadores
   piloto.
+- **Offline-first revertido a online-only, a pedido explícito del usuario.**
+  Se borraron `src/db/local/` (cache SQLite de jugadores/sesiones/registros),
+  `src/sync/attendanceSync.ts` y `src/hooks/useAttendanceSync.tsx`, y se
+  sacaron las dependencias `expo-sqlite`, `@react-native-community/netinfo`
+  y `@nozbe/watermelondb` (esta última nunca se llegó a usar — quedó del
+  scaffolding inicial cuando todavía se dudaba entre WatermelonDB y
+  expo-sqlite). Las 4 pantallas de Asistencia (`app/(tabs)/asistencia/`)
+  pasan a leer/escribir directo contra Supabase vía un `src/db/supabase/attendance.ts`
+  nuevo (mismo esquema remoto, sin cache ni cola de sync); se sacó también el
+  banner de "sincronizando/pendientes de subir" y el gate de "Rutina de hoy"
+  que antes esperaba a que la sesión estuviera sincronizada (ya no aplica,
+  toda escritura es inmediata contra Supabase). La app ahora requiere
+  conexión a internet en todas sus pantallas, sin excepción — no reintroducir
+  cache local sin pedido explícito.
+- **Torneos/Ligas reestructurados: se eliminó el concepto de "partido
+  suelto".** Antes `matches.tournament_id` era nullable y representaba un
+  partido sin torneo asociado; ahora es `NOT NULL` (migración
+  `0010_no_standalone_matches.sql`) — todo partido nace dentro de un
+  `tournaments` (aunque sea un solo partido, tipo `amistoso`). Se sacaron
+  las pantallas `torneos/partidos.tsx` (listado de sueltos) y el botón
+  correspondiente en `torneos/index.tsx`; `torneos/partido/nuevo.tsx` ahora
+  exige `tournamentId` como parámetro obligatorio. El formulario
+  (`TournamentEventForm.tsx`) muestra campos distintos según `type`: para
+  `type='liga'` se ocultan "Lugar"/"Dirección" a nivel torneo (cada jornada
+  ya tiene los suyos propios en `matches`, para reflejar que una liga se
+  juega en clubes/localidades distintas a lo largo de la temporada) y las
+  etiquetas de fecha cambian a "Inicio/Fin de temporada". Se agregó
+  validación (client-side en el form + `check` constraint en la migración
+  0010) de que `end_date >= start_date`, y un bug de fechas invertidas en
+  tarjetas de torneo (`new Date('YYYY-MM-DD')` se parseaba como UTC en vez
+  de hora local — corregido en `src/components/DateField.tsx`). La lista de
+  torneos (`torneos/index.tsx`) pasó a tener filtros colapsados por default
+  (un solo bloque "Filtros ▾/▸", cerrado al entrar) y los íconos de
+  Ganados/Perdidos/Empatados del resumen de temporada ahora son formas
+  distintas (check verde / cruz roja / línea gris en `src/components/ResultIcon.tsx`),
+  no solo texto de color — la grilla de 2 columnas con miniatura de flyer ya
+  existía de antes y no requirió cambios.

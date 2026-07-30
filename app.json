@@ -27,6 +27,13 @@
       "@react-native-community/datetimepicker",
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Newcom Manager necesita acceso a tus fotos para subir fotos y flyers.",
+          "cameraPermission": "Newcom Manager necesita acceso a la cámara para sacar fotos y flyers."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
@@ -34,7 +41,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#14315D"
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {},
