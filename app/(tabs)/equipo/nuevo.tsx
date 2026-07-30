@@ -31,7 +31,7 @@ export default function NuevoJugadorScreen() {
     router.back();
   }
 
-  return <PlayerForm submitLabel="Guardar jugador" onSubmit={handleSubmit} />;
+  return <PlayerForm teamId={teamId} submitLabel="Guardar jugador" onSubmit={handleSubmit} />;
 }
 
 const styles = StyleSheet.create({

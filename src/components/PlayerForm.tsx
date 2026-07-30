@@ -1,13 +1,17 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { MedicalStatus, PlayerInput } from '../db/supabase/players';
+import { uploadPlayerPhoto } from '../db/supabase/storage';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
 import { AppButton } from './AppButton';
 import { AppTextInput } from './AppTextInput';
 import { DateField } from './DateField';
+import { YesNoPills } from './YesNoPills';
 
 type Props = {
+  teamId: string;
   initialValue?: PlayerInput;
   onSubmit: (input: PlayerInput) => Promise<void>;
   submitLabel: string;
@@ -19,9 +23,12 @@ const MEDICAL_OPTIONS: { value: MedicalStatus; label: string }[] = [
   { value: 'unknown', label: 'Sin dato' },
 ];
 
-export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
+export function PlayerForm({ teamId, initialValue, onSubmit, submitLabel }: Props) {
   const { colors } = useTheme();
   const [fullName, setFullName] = useState(initialValue?.full_name ?? '');
+  const [jerseyNumber, setJerseyNumber] = useState(
+    initialValue?.jersey_number != null ? String(initialValue.jersey_number) : ''
+  );
   const [phone, setPhone] = useState(initialValue?.phone ?? '');
   const [whatsapp, setWhatsapp] = useState(initialValue?.whatsapp ?? '');
   const [birthDate, setBirthDate] = useState<string | null>(initialValue?.birth_date ?? null);
@@ -33,10 +40,53 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
   );
   const [notes, setNotes] = useState(initialValue?.notes ?? '');
   const [photoUrl, setPhotoUrl] = useState(initialValue?.photo_url ?? '');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [emergencyName, setEmergencyName] = useState(initialValue?.emergency_contact_name ?? '');
   const [emergencyPhone, setEmergencyPhone] = useState(initialValue?.emergency_contact_phone ?? '');
+  const [practicesOtherSport, setPracticesOtherSport] = useState(
+    initialValue?.practices_other_sport ?? false
+  );
+  const [otherSportDetail, setOtherSportDetail] = useState(initialValue?.other_sport_detail ?? '');
+  const [hasInjuries, setHasInjuries] = useState(initialValue?.has_injuries ?? false);
+  const [injuriesDetail, setInjuriesDetail] = useState(initialValue?.injuries_detail ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function pickAndUploadPhoto(fromCamera: boolean) {
+    setPhotoError(null);
+    const permission = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setPhotoError('Necesitamos permiso para acceder a la cámara/galería.');
+      return;
+    }
+
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadPlayerPhoto(teamId, result.assets[0].uri);
+      setPhotoUrl(url);
+    } catch {
+      setPhotoError('No se pudo subir la foto, probá cuando tengas señal.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  function choosePhotoSource() {
+    Alert.alert('Foto del jugador', undefined, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Elegir de la galería', onPress: () => pickAndUploadPhoto(false) },
+      { text: 'Sacar foto', onPress: () => pickAndUploadPhoto(true) },
+    ]);
+  }
 
   async function handleSubmit() {
     const trimmedName = fullName.trim();
@@ -47,8 +97,10 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
     setError(null);
     setLoading(true);
     try {
+      const parsedJerseyNumber = parseInt(jerseyNumber, 10);
       await onSubmit({
         full_name: trimmedName,
+        jersey_number: Number.isFinite(parsedJerseyNumber) ? parsedJerseyNumber : null,
         phone: phone.trim() || null,
         whatsapp: whatsapp.trim() || null,
         birth_date: birthDate,
@@ -58,6 +110,10 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
         photo_url: photoUrl.trim() || null,
         emergency_contact_name: emergencyName.trim() || null,
         emergency_contact_phone: emergencyPhone.trim() || null,
+        practices_other_sport: practicesOtherSport,
+        other_sport_detail: practicesOtherSport ? otherSportDetail.trim() || null : null,
+        has_injuries: hasInjuries,
+        injuries_detail: hasInjuries ? injuriesDetail.trim() || null : null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos guardar. Probá de nuevo.');
@@ -74,6 +130,14 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
     >
       <Text style={[styles.label, { color: colors.textMuted }]}>Nombre completo</Text>
       <AppTextInput value={fullName} onChangeText={setFullName} placeholder="Nombre y apellido" />
+
+      <Text style={[styles.label, { color: colors.textMuted }]}>Número de camiseta (opcional)</Text>
+      <AppTextInput
+        value={jerseyNumber}
+        onChangeText={setJerseyNumber}
+        placeholder="Ej: 7"
+        keyboardType="number-pad"
+      />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Teléfono</Text>
       <AppTextInput
@@ -127,6 +191,28 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
         placeholder="Seleccionar fecha de vencimiento"
       />
 
+      <Text style={[styles.label, { color: colors.textMuted }]}>¿Practica otro deporte?</Text>
+      <YesNoPills value={practicesOtherSport} onChange={setPracticesOtherSport} />
+      {practicesOtherSport ? (
+        <AppTextInput
+          value={otherSportDetail}
+          onChangeText={setOtherSportDetail}
+          placeholder="¿Cuál?"
+          style={styles.conditionalInput}
+        />
+      ) : null}
+
+      <Text style={[styles.label, { color: colors.textMuted }]}>¿Tiene lesiones?</Text>
+      <YesNoPills value={hasInjuries} onChange={setHasInjuries} />
+      {hasInjuries ? (
+        <AppTextInput
+          value={injuriesDetail}
+          onChangeText={setInjuriesDetail}
+          placeholder="¿Cuáles?"
+          style={styles.conditionalInput}
+        />
+      ) : null}
+
       <Text style={[styles.label, { color: colors.textMuted }]}>Contacto de emergencia</Text>
       <AppTextInput
         value={emergencyName}
@@ -141,14 +227,16 @@ export function PlayerForm({ initialValue, onSubmit, submitLabel }: Props) {
         keyboardType="phone-pad"
       />
 
-      <Text style={[styles.label, { color: colors.textMuted }]}>Link de foto (opcional)</Text>
-      <AppTextInput
-        value={photoUrl}
-        onChangeText={setPhotoUrl}
-        placeholder="https://..."
-        keyboardType="url"
-        autoCapitalize="none"
+      <Text style={[styles.label, { color: colors.textMuted }]}>Foto</Text>
+      {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.photoPreview} /> : null}
+      <AppButton
+        label={uploadingPhoto ? 'Subiendo...' : photoUrl ? 'Cambiar foto' : 'Agregar foto'}
+        variant="secondary"
+        onPress={choosePhotoSource}
+        loading={uploadingPhoto}
+        disabled={uploadingPhoto}
       />
+      {photoError ? <Text style={[styles.error, { color: colors.danger }]}>{photoError}</Text> : null}
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Notas</Text>
       <AppTextInput
@@ -191,7 +279,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  conditionalInput: { marginTop: spacing.sm },
   notesInput: { minHeight: 96, paddingVertical: spacing.sm, textAlignVertical: 'top' },
+  photoPreview: {
+    width: 120,
+    height: 120,
+    borderRadius: radius,
+    marginBottom: spacing.sm,
+  },
   error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.md },
   spacer: { height: spacing.md },
   smallSpacer: { height: spacing.sm },

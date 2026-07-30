@@ -6,6 +6,7 @@ export type Player = {
   id: string;
   team_id: string;
   full_name: string;
+  jersey_number: number | null;
   birth_date: string | null;
   phone: string | null;
   whatsapp: string | null;
@@ -15,6 +16,10 @@ export type Player = {
   photo_url: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  practices_other_sport: boolean;
+  other_sport_detail: string | null;
+  has_injuries: boolean;
+  injuries_detail: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -22,6 +27,7 @@ export type Player = {
 
 export type PlayerInput = {
   full_name: string;
+  jersey_number: number | null;
   birth_date: string | null;
   phone: string | null;
   whatsapp: string | null;
@@ -31,6 +37,10 @@ export type PlayerInput = {
   photo_url: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  practices_other_sport: boolean;
+  other_sport_detail: string | null;
+  has_injuries: boolean;
+  injuries_detail: string | null;
 };
 
 export async function listPlayers(teamId: string): Promise<Player[]> {
