@@ -10,7 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from '../src/hooks/useAuth';
 import { ThemeModeProvider } from '../src/hooks/useThemePreference';
-import { useTheme } from '../src/theme';
+import { fonts, typography, useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -23,7 +23,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutInner() {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const [fontsLoaded] = useFonts({
     AtkinsonHyperlegible_400Regular,
     AtkinsonHyperlegible_700Bold,
@@ -45,6 +45,16 @@ function RootLayoutInner() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="anotador"
+          options={{
+            headerShown: true,
+            title: 'Anotador',
+            headerTitleStyle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold },
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
       </Stack>
     </AuthProvider>
   );

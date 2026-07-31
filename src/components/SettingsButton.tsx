@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Alert, Pressable } from 'react-native';
 
 import { signOut } from '../db/supabase/auth';
@@ -9,6 +10,7 @@ export function SettingsButton() {
 
   function handlePress() {
     Alert.alert('Configuración', undefined, [
+      { text: 'Anotador', onPress: () => router.push('/anotador') },
       { text: 'Cerrar sesión', style: 'destructive', onPress: () => signOut() },
       { text: 'Cancelar', style: 'cancel' },
     ]);

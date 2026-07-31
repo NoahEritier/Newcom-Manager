@@ -8,19 +8,13 @@ import { getMatch, type Match } from '../../../../../../src/db/supabase/matches'
 import {
   getOrCreateStatSheet,
   listPlayerMatchStats,
+  STAT_SHEET_STATUS_LABEL,
   updateStatSheetStatus,
   type MatchStatSheet,
   type PlayerMatchStats,
 } from '../../../../../../src/db/supabase/matchStats';
 import { listPlayers, type Player } from '../../../../../../src/db/supabase/players';
 import { fonts, minTouchSize, spacing, typography, useTheme } from '../../../../../../src/theme';
-
-const STATUS_LABEL: Record<MatchStatSheet['status'], string> = {
-  borrador: 'Sin empezar',
-  escaneada: 'Escaneada',
-  revisada: 'En revisión',
-  confirmada: 'Confirmada',
-};
 
 export default function EstadisticasPartidoScreen() {
   const { colors } = useTheme();
@@ -111,7 +105,7 @@ export default function EstadisticasPartidoScreen() {
         <View style={styles.header}>
           <Stack.Screen options={{ title: `Estadísticas vs ${match.opponent}` }} />
           <StatusBadge
-            label={STATUS_LABEL[sheet.status]}
+            label={STAT_SHEET_STATUS_LABEL[sheet.status]}
             tone={sheet.status === 'confirmada' ? 'success' : 'default'}
           />
           <Text style={[styles.hint, { color: colors.textMuted }]}>
