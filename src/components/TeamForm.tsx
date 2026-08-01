@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import type { TeamGender, TeamInput } from '../db/supabase/team';
-import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
+import { fonts, spacing, typography, useTheme } from '../theme';
 import { AppButton } from './AppButton';
 import { AppTextInput } from './AppTextInput';
+import { Dropdown } from './Dropdown';
+import { MultiSelectDropdown } from './MultiSelectDropdown';
 
 type Props = {
   initialValue: TeamInput;
@@ -29,6 +31,16 @@ const DAY_OPTIONS = [
   { value: 0, label: 'Dom' },
 ];
 
+const DAY_FULL_LABEL: Record<number, string> = {
+  0: 'Domingo',
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+};
+
 export function TeamForm({ initialValue, onSubmit }: Props) {
   const { colors } = useTheme();
   const [name, setName] = useState(initialValue.name);
@@ -38,12 +50,6 @@ export function TeamForm({ initialValue, onSubmit }: Props) {
   const [trainingDays, setTrainingDays] = useState<number[]>(initialValue.training_days);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function toggleDay(day: number) {
-    setTrainingDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
-    );
-  }
 
   async function handleSubmit() {
     const trimmedName = name.trim();
@@ -78,26 +84,13 @@ export function TeamForm({ initialValue, onSubmit }: Props) {
       <AppTextInput value={name} onChangeText={setName} placeholder="Ej: Newcom Sub-14" />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Género</Text>
-      <View style={styles.pillRow}>
-        {GENDER_OPTIONS.map((option) => {
-          const selected = option.value === gender;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setGender(selected ? null : option.value)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Dropdown
+        value={gender ?? ''}
+        options={[{ value: '', label: 'Sin especificar' }, ...GENDER_OPTIONS]}
+        onChange={(v) => setGender((v || null) as TeamGender | null)}
+        placeholder="Sin especificar"
+        title="Género"
+      />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Categoría</Text>
       <AppTextInput value={category} onChangeText={setCategory} placeholder="Ej: Sub-14, Mayores" />
@@ -110,26 +103,13 @@ export function TeamForm({ initialValue, onSubmit }: Props) {
       />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Días de entrenamiento</Text>
-      <View style={styles.pillRow}>
-        {DAY_OPTIONS.map((option) => {
-          const selected = trainingDays.includes(option.value);
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => toggleDay(option.value)}
-              style={[
-                styles.dayPill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <MultiSelectDropdown
+        values={trainingDays.map(String)}
+        options={DAY_OPTIONS.map((d) => ({ value: String(d.value), label: DAY_FULL_LABEL[d.value] }))}
+        onChange={(values) => setTrainingDays(values.map(Number).sort())}
+        placeholder="Seleccionar días"
+        title="Días de entrenamiento"
+      />
 
       {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
 
@@ -153,24 +133,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  dayPill: {
-    minWidth: minTouchSize,
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.md },
   spacer: { height: spacing.md },
 });

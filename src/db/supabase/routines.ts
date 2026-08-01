@@ -206,3 +206,28 @@ export async function unlinkRoutineFromSession(sessionId: string, routineId: str
     .eq('routine_id', routineId);
   if (error) throw error;
 }
+
+// Vínculo rutina <-> jugador puntual (asignación personalizada, independiente
+// de session_routines).
+export async function listRoutinePlayerIds(routineId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('routine_players')
+    .select('player_id')
+    .eq('routine_id', routineId);
+  if (error) throw error;
+  return data.map((row) => row.player_id);
+}
+
+export async function setRoutinePlayers(routineId: string, playerIds: string[]): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('routine_players')
+    .delete()
+    .eq('routine_id', routineId);
+  if (deleteError) throw deleteError;
+
+  if (playerIds.length === 0) return;
+  const { error: insertError } = await supabase
+    .from('routine_players')
+    .insert(playerIds.map((playerId) => ({ routine_id: routineId, player_id: playerId })));
+  if (insertError) throw insertError;
+}

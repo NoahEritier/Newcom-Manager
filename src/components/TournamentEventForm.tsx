@@ -1,10 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { TournamentInput } from '../db/supabase/tournaments';
 import { uploadTournamentFlyer } from '../db/supabase/storage';
-import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
+import { fonts, radius, spacing, typography, useTheme } from '../theme';
 import { defaultTournamentWhatsappMessage } from '../utils/tournamentMessage';
 import {
   FEE_MODES,
@@ -17,6 +17,8 @@ import {
 import { AppButton } from './AppButton';
 import { AppTextInput } from './AppTextInput';
 import { DateField } from './DateField';
+import { Dropdown } from './Dropdown';
+import { YesNoPills } from './YesNoPills';
 
 type Props = {
   teamId: string;
@@ -156,48 +158,20 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
       <AppTextInput value={title} onChangeText={setTitle} placeholder="Ej: Copa Newcom Verano" />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Tipo</Text>
-      <View style={styles.pillRow}>
-        {TOURNAMENT_TYPES.map((option) => {
-          const selected = option.value === type;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setType(option.value)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Dropdown
+        value={type}
+        options={TOURNAMENT_TYPES}
+        onChange={(v) => setType(v as TournamentType)}
+        title="Tipo de torneo"
+      />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Estado de inscripción</Text>
-      <View style={styles.pillRow}>
-        {REGISTRATION_STATUSES.map((option) => {
-          const selected = option.value === registrationStatus;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setRegistrationStatus(option.value)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Dropdown
+        value={registrationStatus}
+        options={REGISTRATION_STATUSES}
+        onChange={(v) => setRegistrationStatus(v as RegistrationStatus)}
+        title="Estado de inscripción"
+      />
 
       <View style={styles.row}>
         <View style={styles.rowField}>
@@ -248,54 +222,16 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
       <AppTextInput value={fee} onChangeText={setFee} placeholder="Monto" keyboardType="decimal-pad" />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>¿La tarifa es por jugador o por equipo?</Text>
-      <View style={styles.pillRow}>
-        {FEE_MODES.map((option) => {
-          const selected = option.value === feeMode;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setFeeMode(selected ? null : option.value)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Dropdown
+        value={feeMode ?? ''}
+        options={[{ value: '', label: 'Sin especificar' }, ...FEE_MODES]}
+        onChange={(v) => setFeeMode((v || null) as FeeMode | null)}
+        placeholder="Sin especificar"
+        title="Modalidad de tarifa"
+      />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>¿Ya está pago?</Text>
-      <View style={styles.pillRow}>
-        <Pressable
-          onPress={() => setIsPaid(true)}
-          style={[
-            styles.pill,
-            { borderColor: colors.border, backgroundColor: colors.surface },
-            isPaid && { backgroundColor: colors.success, borderColor: colors.success },
-          ]}
-        >
-          <Text style={[styles.pillLabel, { color: isPaid ? colors.primaryText : colors.text }]}>
-            Sí, pagado
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setIsPaid(false)}
-          style={[
-            styles.pill,
-            { borderColor: colors.border, backgroundColor: colors.surface },
-            !isPaid && { backgroundColor: colors.danger, borderColor: colors.danger },
-          ]}
-        >
-          <Text style={[styles.pillLabel, { color: !isPaid ? colors.primaryText : colors.text }]}>
-            Todavía no
-          </Text>
-        </Pressable>
-      </View>
+      <YesNoPills value={isPaid} onChange={setIsPaid} yesLabel="Sí, pagado" noLabel="Todavía no" />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>¿De dónde sale la plata?</Text>
       <AppTextInput
@@ -350,15 +286,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.md },
   rowField: { flex: 1 },
   multilineInput: { minHeight: 72, paddingVertical: spacing.sm, textAlignVertical: 'top' },
-  pillRow: { flexDirection: 'row', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   hint: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.xs },
   flyerPreview: { width: 160, height: 160, borderRadius: radius, marginBottom: spacing.sm },
   error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.md },

@@ -1,13 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { MedicalStatus, PlayerInput } from '../db/supabase/players';
 import { uploadPlayerPhoto } from '../db/supabase/storage';
-import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
+import { fonts, radius, spacing, typography, useTheme } from '../theme';
 import { AppButton } from './AppButton';
 import { AppTextInput } from './AppTextInput';
 import { DateField } from './DateField';
+import { Dropdown } from './Dropdown';
 import { YesNoPills } from './YesNoPills';
 
 type Props = {
@@ -163,26 +164,12 @@ export function PlayerForm({ teamId, initialValue, onSubmit, submitLabel }: Prop
       />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Apto médico</Text>
-      <View style={styles.pillRow}>
-        {MEDICAL_OPTIONS.map((option) => {
-          const selected = option.value === medicalStatus;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setMedicalStatus(option.value)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Dropdown
+        value={medicalStatus}
+        options={MEDICAL_OPTIONS}
+        onChange={(v) => setMedicalStatus(v as MedicalStatus)}
+        title="Apto médico"
+      />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Vencimiento del apto</Text>
       <DateField
@@ -270,15 +257,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
-  pillRow: { flexDirection: 'row', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   conditionalInput: { marginTop: spacing.sm },
   notesInput: { minHeight: 96, paddingVertical: spacing.sm, textAlignVertical: 'top' },
   photoPreview: {

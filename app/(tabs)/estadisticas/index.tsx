@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 
+import { Dropdown } from '../../../src/components/Dropdown';
 import { StatusBadge } from '../../../src/components/StatusBadge';
 import {
   getConfirmedStatsSummary,
@@ -167,72 +168,22 @@ export default function EstadisticasScreen() {
       {filtersOpen ? (
         <View style={styles.filtersPanel}>
           <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Torneo</Text>
-          <View style={styles.pillRow}>
-            <Pressable
-              onPress={() => setTournamentFilter(null)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                !tournamentFilter && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: !tournamentFilter ? colors.primaryText : colors.text }]}>
-                Todos
-              </Text>
-            </Pressable>
-            {tournaments.map((t) => {
-              const selected = t.id === tournamentFilter;
-              return (
-                <Pressable
-                  key={t.id}
-                  onPress={() => setTournamentFilter(selected ? null : t.id)}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                    {t.title}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Dropdown
+            value={tournamentFilter ?? ''}
+            options={[{ value: '', label: 'Todos' }, ...tournaments.map((t) => ({ value: t.id, label: t.title }))]}
+            onChange={(v) => setTournamentFilter(v || null)}
+            placeholder="Todos"
+            title="Torneo"
+          />
 
           <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Estado de planilla</Text>
-          <View style={styles.pillRow}>
-            <Pressable
-              onPress={() => setStatusFilter(null)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                !statusFilter && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: !statusFilter ? colors.primaryText : colors.text }]}>
-                Todas
-              </Text>
-            </Pressable>
-            {STATUS_FILTERS.map((option) => {
-              const selected = option.value === statusFilter;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setStatusFilter(selected ? null : option.value)}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Dropdown
+            value={statusFilter ?? ''}
+            options={[{ value: '', label: 'Todas' }, ...STATUS_FILTERS]}
+            onChange={(v) => setStatusFilter((v || null) as StatSheetStatus | 'sin_planilla' | null)}
+            placeholder="Todas"
+            title="Estado de planilla"
+          />
         </View>
       ) : null}
 
@@ -262,26 +213,12 @@ export default function EstadisticasScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
             Ranking de jugadores
           </Text>
-          <View style={styles.pillRow}>
-            {RANKING_METRICS.map((option) => {
-              const selected = option.value === rankingMetric;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setRankingMetric(option.value)}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Dropdown
+            value={rankingMetric}
+            options={RANKING_METRICS}
+            onChange={(v) => setRankingMetric(v as StatFieldKey)}
+            title="Métrica de ranking"
+          />
           {rankingChartData ? (
             <BarChart
               data={rankingChartData}
@@ -354,15 +291,6 @@ const styles = StyleSheet.create({
   filtersToggleLabel: { fontSize: typography.body, fontFamily: fonts.bold },
   filtersPanel: { gap: spacing.md },
   filterLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   sectionTitle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular },
   chart: { borderRadius: radius, marginTop: spacing.sm },

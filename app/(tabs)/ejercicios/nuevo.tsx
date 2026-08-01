@@ -2,7 +2,12 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ExerciseForm } from '../../../src/components/ExerciseForm';
-import { createExercise, type ExerciseInput } from '../../../src/db/supabase/exercises';
+import {
+  createExercise,
+  replaceExerciseVariants,
+  type ExerciseInput,
+  type ExerciseVariantInput,
+} from '../../../src/db/supabase/exercises';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { fonts, spacing, typography, useTheme } from '../../../src/theme';
 
@@ -19,8 +24,11 @@ export default function NuevoEjercicioScreen() {
     );
   }
 
-  async function handleSubmit(input: ExerciseInput) {
-    await createExercise(coachId as string, input);
+  async function handleSubmit(input: ExerciseInput, variants: ExerciseVariantInput[]) {
+    const exerciseId = await createExercise(coachId as string, input);
+    if (variants.length > 0) {
+      await replaceExerciseVariants(exerciseId, variants);
+    }
     router.back();
   }
 

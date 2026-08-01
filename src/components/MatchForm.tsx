@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { HomeAway, MatchInput } from '../db/supabase/matches';
-import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../theme';
+import { fonts, spacing, typography, useTheme } from '../theme';
 import { deriveOutcome, OUTCOME_LABEL } from '../utils/tournamentResult';
 import { AppButton } from './AppButton';
 import { AppTextInput } from './AppTextInput';
 import { DateField } from './DateField';
+import { Dropdown } from './Dropdown';
 import { TimeField } from './TimeField';
 
 // tournament_id no se edita acá: lo fija la pantalla que llama a este
@@ -101,26 +102,13 @@ export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
       <AppTextInput value={opponent} onChangeText={setOpponent} placeholder="Nombre del rival" />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Local o visitante</Text>
-      <View style={styles.pillRow}>
-        {HOME_AWAY_OPTIONS.map((option) => {
-          const selected = option.value === homeAway;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setHomeAway(selected ? null : option.value)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Dropdown
+        value={homeAway ?? ''}
+        options={[{ value: '', label: 'Sin especificar' }, ...HOME_AWAY_OPTIONS]}
+        onChange={(v) => setHomeAway((v || null) as HomeAway | null)}
+        placeholder="Sin especificar"
+        title="Local o visitante"
+      />
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Lugar</Text>
       <AppTextInput value={location} onChangeText={setLocation} placeholder="Nombre de la cancha" />
@@ -175,15 +163,6 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', gap: spacing.md },
   rowField: { flex: 1 },
-  pillRow: { flexDirection: 'row', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   outcome: { fontSize: typography.body, fontFamily: fonts.bold, marginTop: spacing.sm },
   error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.md },
   spacer: { height: spacing.md },

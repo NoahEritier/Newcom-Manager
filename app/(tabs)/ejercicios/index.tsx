@@ -4,11 +4,16 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 
 import { AppButton } from '../../../src/components/AppButton';
 import { AppTextInput } from '../../../src/components/AppTextInput';
+import { Dropdown } from '../../../src/components/Dropdown';
+import { MultiSelectDropdown } from '../../../src/components/MultiSelectDropdown';
 import { listExercises, type Exercise, type ExerciseCategory } from '../../../src/db/supabase/exercises';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { fonts, minTouchSize, radius, spacing, typography, useTheme } from '../../../src/theme';
 import { categoryLabel, EXERCISE_CATEGORIES } from '../../../src/utils/exerciseCategories';
 import { MUSCLE_GROUPS_JOINTS, MUSCLE_GROUPS_MUSCLES } from '../../../src/utils/muscleGroups';
+
+const CATEGORY_FILTER_OPTIONS = [{ value: '', label: 'Todas' }, ...EXERCISE_CATEGORIES];
+const MUSCLE_FILTER_OPTIONS = [...MUSCLE_GROUPS_MUSCLES, ...MUSCLE_GROUPS_JOINTS];
 
 export default function EjerciciosScreen() {
   const { colors } = useTheme();
@@ -20,13 +25,6 @@ export default function EjerciciosScreen() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ExerciseCategory | null>(null);
   const [muscleGroupFilter, setMuscleGroupFilter] = useState<string[]>([]);
-  const [showMuscleFilter, setShowMuscleFilter] = useState(false);
-
-  function toggleMuscleGroupFilter(value: string) {
-    setMuscleGroupFilter((current) =>
-      current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
-    );
-  }
 
   const load = useCallback(async () => {
     if (!coachId) return;
@@ -96,70 +94,23 @@ export default function EjerciciosScreen() {
             autoCapitalize="none"
           />
 
-          <View style={styles.pillRow}>
-            <Pressable
-              onPress={() => setCategoryFilter(null)}
-              style={[
-                styles.pill,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                !categoryFilter && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.pillLabel, { color: !categoryFilter ? colors.primaryText : colors.text }]}>
-                Todos
-              </Text>
-            </Pressable>
-            {EXERCISE_CATEGORIES.map((option) => {
-              const selected = option.value === categoryFilter;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setCategoryFilter(selected ? null : option.value)}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Categoría</Text>
+          <Dropdown
+            value={categoryFilter ?? ''}
+            options={CATEGORY_FILTER_OPTIONS}
+            onChange={(v) => setCategoryFilter((v || null) as ExerciseCategory | null)}
+            placeholder="Todas"
+            title="Categoría"
+          />
 
-          <Pressable onPress={() => setShowMuscleFilter((v) => !v)} style={styles.toggleFilterButton}>
-            <Text style={[styles.toggleFilterLabel, { color: colors.link }]}>
-              {showMuscleFilter ? 'Ocultar filtro por grupo muscular' : 'Filtrar por grupo muscular'}
-              {muscleGroupFilter.length > 0 ? ` (${muscleGroupFilter.length})` : ''}
-            </Text>
-          </Pressable>
-
-          {showMuscleFilter ? (
-            <View style={styles.pillRow}>
-              {[...MUSCLE_GROUPS_MUSCLES, ...MUSCLE_GROUPS_JOINTS].map((option) => {
-                const selected = muscleGroupFilter.includes(option.value);
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => toggleMuscleGroupFilter(option.value)}
-                    style={[
-                      styles.pill,
-                      { borderColor: colors.border, backgroundColor: colors.surface },
-                      selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
+          <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Grupo muscular / articulación</Text>
+          <MultiSelectDropdown
+            values={muscleGroupFilter}
+            options={MUSCLE_FILTER_OPTIONS}
+            onChange={setMuscleGroupFilter}
+            placeholder="Todos"
+            title="Grupo muscular / articulación"
+          />
         </View>
       }
       ListEmptyComponent={
@@ -193,17 +144,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { flexGrow: 1 },
   header: { padding: spacing.lg, gap: spacing.md },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
-  toggleFilterButton: { minHeight: minTouchSize, justifyContent: 'center' },
-  toggleFilterLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  filterLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   row: {

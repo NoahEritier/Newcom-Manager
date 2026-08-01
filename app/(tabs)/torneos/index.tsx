@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View }
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { AppButton } from '../../../src/components/AppButton';
+import { Dropdown } from '../../../src/components/Dropdown';
 import { ResultIcon } from '../../../src/components/ResultIcon';
 import { listAllMatches } from '../../../src/db/supabase/matches';
 import { listTournaments, type Tournament } from '../../../src/db/supabase/tournaments';
@@ -151,104 +152,33 @@ export default function TorneosScreen() {
           {filtersOpen ? (
             <View style={styles.filtersPanel}>
               <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Fecha</Text>
-              <View style={styles.pillRow}>
-                <Pressable
-                  onPress={() => setDateFilter('proximos')}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    dateFilter === 'proximos' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text
-                    style={[styles.pillLabel, { color: dateFilter === 'proximos' ? colors.primaryText : colors.text }]}
-                  >
-                    Próximos
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setDateFilter('pasados')}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    dateFilter === 'pasados' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text
-                    style={[styles.pillLabel, { color: dateFilter === 'pasados' ? colors.primaryText : colors.text }]}
-                  >
-                    Pasados
-                  </Text>
-                </Pressable>
-              </View>
+              <Dropdown
+                value={dateFilter}
+                options={[
+                  { value: 'proximos', label: 'Próximos' },
+                  { value: 'pasados', label: 'Pasados' },
+                ]}
+                onChange={(v) => setDateFilter(v as DateFilter)}
+                title="Fecha"
+              />
 
               <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Estado de inscripción</Text>
-              <View style={styles.pillRow}>
-                <Pressable
-                  onPress={() => setStatusFilter(null)}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    !statusFilter && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={[styles.pillLabel, { color: !statusFilter ? colors.primaryText : colors.text }]}>
-                    Todos
-                  </Text>
-                </Pressable>
-                {REGISTRATION_STATUSES.map((option) => {
-                  const selected = option.value === statusFilter;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      onPress={() => setStatusFilter(selected ? null : option.value)}
-                      style={[
-                        styles.pill,
-                        { borderColor: colors.border, backgroundColor: colors.surface },
-                        selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                      ]}
-                    >
-                      <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Dropdown
+                value={statusFilter ?? ''}
+                options={[{ value: '', label: 'Todos' }, ...REGISTRATION_STATUSES]}
+                onChange={(v) => setStatusFilter((v || null) as RegistrationStatus | null)}
+                placeholder="Todos"
+                title="Estado de inscripción"
+              />
 
               <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Tipo</Text>
-              <View style={styles.pillRow}>
-                <Pressable
-                  onPress={() => setTypeFilter(null)}
-                  style={[
-                    styles.pill,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    !typeFilter && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={[styles.pillLabel, { color: !typeFilter ? colors.primaryText : colors.text }]}>
-                    Todos
-                  </Text>
-                </Pressable>
-                {TOURNAMENT_TYPES.map((option) => {
-                  const selected = option.value === typeFilter;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      onPress={() => setTypeFilter(selected ? null : option.value)}
-                      style={[
-                        styles.pill,
-                        { borderColor: colors.border, backgroundColor: colors.surface },
-                        selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                      ]}
-                    >
-                      <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Dropdown
+                value={typeFilter ?? ''}
+                options={[{ value: '', label: 'Todos' }, ...TOURNAMENT_TYPES]}
+                onChange={(v) => setTypeFilter((v || null) as TournamentType | null)}
+                placeholder="Todos"
+                title="Tipo"
+              />
             </View>
           ) : null}
         </View>
@@ -326,15 +256,6 @@ const styles = StyleSheet.create({
   filtersToggleLabel: { fontSize: typography.body, fontFamily: fonts.bold },
   filtersPanel: { gap: spacing.md },
   filterLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
   emptyContainer: { padding: spacing.lg, alignItems: 'center' },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular, textAlign: 'center' },
   card: {

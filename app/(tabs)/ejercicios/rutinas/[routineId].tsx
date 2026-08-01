@@ -3,16 +3,20 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../../src/components/AppButton';
+import { Dropdown } from '../../../../src/components/Dropdown';
 import { RoutineExerciseModal } from '../../../../src/components/RoutineExerciseModal';
 import { listExercises, type Exercise } from '../../../../src/db/supabase/exercises';
+import { listPlayers, type Player } from '../../../../src/db/supabase/players';
 import {
   addExerciseToRoutine,
   deleteRoutine,
   duplicateRoutine,
   getRoutine,
   listRoutineExercises,
+  listRoutinePlayerIds,
   listRoutines,
   removeRoutineExercise,
+  setRoutinePlayers,
   swapRoutineExercisePositions,
   updateRoutine,
   updateRoutineExercise,
@@ -22,19 +26,24 @@ import {
   type RoutineLevel,
 } from '../../../../src/db/supabase/routines';
 import { useAuth } from '../../../../src/hooks/useAuth';
+import { useTeam } from '../../../../src/hooks/useTeam';
 import { fonts, minTouchSize, spacing, typography, useTheme } from '../../../../src/theme';
-import { levelLabel, ROUTINE_LEVELS } from '../../../../src/utils/routineLevels';
+import { ROUTINE_LEVELS } from '../../../../src/utils/routineLevels';
 
 export default function RutinaDetalleScreen() {
   const { colors } = useTheme();
   const { routineId } = useLocalSearchParams<{ routineId: string }>();
   const { session } = useAuth();
   const coachId = session?.user.id ?? null;
+  const { teamId } = useTeam();
 
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [routineExercises, setRoutineExercises] = useState<RoutineExercise[]>([]);
   const [library, setLibrary] = useState<Exercise[]>([]);
   const [allRoutines, setAllRoutines] = useState<Routine[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [assignedPlayerIds, setAssignedPlayerIds] = useState<Set<string>>(new Set());
+  const [savingAssignments, setSavingAssignments] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,22 +57,26 @@ export default function RutinaDetalleScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [r, items, allExercises, routines] = await Promise.all([
+      const [r, items, allExercises, routines, assignedIds, teamPlayers] = await Promise.all([
         getRoutine(routineId),
         listRoutineExercises(routineId),
         listExercises(coachId),
         listRoutines(coachId),
+        listRoutinePlayerIds(routineId),
+        teamId ? listPlayers(teamId) : Promise.resolve([]),
       ]);
       setRoutine(r);
       setRoutineExercises(items);
       setLibrary(allExercises);
       setAllRoutines(routines);
+      setAssignedPlayerIds(new Set(assignedIds));
+      setPlayers(teamPlayers);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos cargar la rutina.');
     } finally {
       setLoading(false);
     }
-  }, [routineId, coachId]);
+  }, [routineId, coachId, teamId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,9 +106,22 @@ export default function RutinaDetalleScreen() {
     persistRoutine({ is_favorite: !routine.is_favorite });
   }
 
-  function setLevel(level: RoutineLevel) {
+  function setLevel(level: string) {
     if (!routine) return;
-    persistRoutine({ level: routine.level === level ? null : level });
+    persistRoutine({ level: (level || null) as RoutineLevel | null });
+  }
+
+  async function toggleAssignedPlayer(playerId: string) {
+    const next = new Set(assignedPlayerIds);
+    if (next.has(playerId)) next.delete(playerId);
+    else next.add(playerId);
+    setAssignedPlayerIds(next);
+    setSavingAssignments(true);
+    try {
+      await setRoutinePlayers(routineId, Array.from(next));
+    } finally {
+      setSavingAssignments(false);
+    }
   }
 
   function chooseNextRoutine(nextId: string) {
@@ -231,27 +257,13 @@ export default function RutinaDetalleScreen() {
             ) : null}
 
             <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Nivel</Text>
-            <View style={styles.pillRow}>
-              {ROUTINE_LEVELS.map((option) => {
-                const selected = option.value === routine.level;
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setLevel(option.value)}
-                    disabled={busy}
-                    style={[
-                      styles.pill,
-                      { borderColor: colors.border, backgroundColor: colors.surface },
-                      selected && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    ]}
-                  >
-                    <Text style={[styles.pillLabel, { color: selected ? colors.primaryText : colors.text }]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Dropdown
+              value={routine.level ?? ''}
+              options={[{ value: '', label: 'Sin nivel' }, ...ROUTINE_LEVELS]}
+              onChange={setLevel}
+              placeholder="Sin nivel"
+              title="Nivel"
+            />
 
             <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Progresión: rutina siguiente</Text>
             {nextRoutine ? (
@@ -294,6 +306,35 @@ export default function RutinaDetalleScreen() {
                 )}
               </View>
             ) : null}
+
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Jugadores asignados {savingAssignments ? '(guardando...)' : `(${assignedPlayerIds.size})`}
+            </Text>
+            {players.length === 0 ? (
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                No hay jugadores cargados en el equipo.
+              </Text>
+            ) : (
+              players.map((p) => {
+                const checked = assignedPlayerIds.has(p.id);
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => toggleAssignedPlayer(p.id)}
+                    style={[styles.row, { borderBottomColor: colors.border }]}
+                  >
+                    <View
+                      style={[
+                        styles.checkbox,
+                        { borderColor: colors.border },
+                        checked && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                    />
+                    <Text style={[styles.rowTitle, { color: colors.text }]}>{p.full_name}</Text>
+                  </Pressable>
+                );
+              })
+            )}
 
             <View style={styles.spacer} />
             <AppButton label="Duplicar rutina" variant="secondary" onPress={handleDuplicate} loading={busy} />
@@ -417,15 +458,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: typography.sectionTitle, fontFamily: fonts.bold, marginTop: spacing.lg, marginBottom: spacing.sm },
   emptyText: { fontSize: typography.body, fontFamily: fonts.regular },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pill: {
-    minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  pillLabel: { fontSize: typography.caption, fontFamily: fonts.bold },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2 },
   nextRoutineRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   nextRoutineLink: { minHeight: minTouchSize, justifyContent: 'center', flex: 1 },
   toggleButton: { minHeight: minTouchSize, justifyContent: 'center' },
