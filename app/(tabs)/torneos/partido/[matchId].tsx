@@ -15,6 +15,7 @@ import {
   type MatchInput,
 } from '../../../../src/db/supabase/matches';
 import { listPlayers } from '../../../../src/db/supabase/players';
+import { listTournamentClubs, type TournamentClub } from '../../../../src/db/supabase/tournamentClubs';
 import { fonts, spacing, typography, useTheme } from '../../../../src/theme';
 import { buildStatSheetHtml } from '../../../../src/utils/statSheetPdf';
 import { formatDate } from '../../../../src/utils/formatDate';
@@ -29,17 +30,24 @@ export default function EditarPartidoScreen() {
   const { colors } = useTheme();
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const [match, setMatch] = useState<Match | null>(null);
+  const [clubs, setClubs] = useState<TournamentClub[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [generatingSheet, setGeneratingSheet] = useState(false);
 
-  const load = useCallback(() => {
-    return getMatch(matchId)
-      .then(setMatch)
-      .catch((e) => setError(e instanceof Error ? e.message : 'No pudimos cargar el partido.'))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const m = await getMatch(matchId);
+      const clubList = await listTournamentClubs(m.tournament_id);
+      setMatch(m);
+      setClubs(clubList);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No pudimos cargar el partido.');
+    } finally {
+      setLoading(false);
+    }
   }, [matchId]);
 
   useEffect(() => {
@@ -75,19 +83,21 @@ export default function EditarPartidoScreen() {
     }
   }
 
+  const club = match ? clubs.find((c) => c.id === match.club_id) ?? null : null;
+
   function handleShare() {
     if (!match) return;
     const parts = [
       `Convocatoria: partido vs ${match.opponent}`,
       `Fecha: ${formatDate(match.match_date)}${match.match_time ? ` ${match.match_time.slice(0, 5)}hs` : ''}`,
     ];
-    if (match.location) parts.push(`Lugar: ${match.location}`);
+    if (club) parts.push(`Lugar: ${club.name}${match.court_name ? ` (${match.court_name})` : ''}`);
     openWhatsAppMessage(parts.join('\n'));
   }
 
   function handleOpenMaps() {
-    if (!match?.address) return;
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.address)}`;
+    if (!club?.address) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(club.address)}`;
     Linking.openURL(url);
   }
 
@@ -143,14 +153,16 @@ export default function EditarPartidoScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ title: `vs ${match.opponent}` }} />
         <MatchForm
+          clubs={clubs}
           submitLabel="Guardar cambios"
           onSubmit={handleSubmit}
           initialValue={{
+            status: match.status,
             match_date: match.match_date,
             match_time: match.match_time,
             opponent: match.opponent,
-            location: match.location,
-            address: match.address,
+            club_id: match.club_id,
+            court_name: match.court_name,
             home_away: match.home_away,
             score_own: match.score_own,
             score_opponent: match.score_opponent,
@@ -171,14 +183,17 @@ export default function EditarPartidoScreen() {
         <Text style={[styles.title, { color: colors.text }]}>vs {match.opponent}</Text>
 
         <DetailSection>
+          <DetailRow label="Estado" value={match.status === 'jugado' ? 'Jugado' : 'Programado'} />
           <DetailRow
             label="Fecha"
             value={formatDate(match.match_date) + (match.match_time ? ` · ${match.match_time.slice(0, 5)}hs` : '')}
           />
           <DetailRow label="Local o visitante" value={match.home_away ? HOME_AWAY_LABEL[match.home_away] : null} />
-          <DetailRow label="Lugar" value={match.location} />
-          <DetailRow label="Dirección" value={match.address} />
-          <DetailRow label="Resultado" value={match.result} />
+          <DetailRow label="Club sede" value={club?.name ?? null} />
+          <DetailRow label="Cancha" value={match.court_name} />
+          {match.status === 'jugado' ? (
+            <DetailRow label="Resultado" value={match.result ?? 'Sin cargar'} />
+          ) : null}
         </DetailSection>
 
         <View style={styles.actions}>
@@ -198,7 +213,7 @@ export default function EditarPartidoScreen() {
             }
           />
           <AppButton label="Enviar convocatoria por WhatsApp" variant="secondary" onPress={handleShare} />
-          {match.address ? (
+          {club?.address ? (
             <AppButton label="Abrir ubicación en Maps" variant="secondary" onPress={handleOpenMaps} />
           ) : null}
           <AppButton

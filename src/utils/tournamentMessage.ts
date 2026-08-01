@@ -7,12 +7,12 @@ export function defaultTournamentWhatsappMessage(
   title: string,
   startDate: string,
   endDate: string | null,
-  location: string
+  locality: string
 ): string {
   const parts = [
     `Convocatoria: ${title || '(nombre del torneo)'}`,
     `Fecha: ${formatDate(startDate)}${endDate ? ` al ${formatDate(endDate)}` : ''}`,
   ];
-  if (location) parts.push(`Lugar: ${location}`);
+  if (locality) parts.push(`Localidad: ${locality}`);
   return parts.join('\n');
 }

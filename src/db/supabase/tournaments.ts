@@ -7,8 +7,7 @@ export type Tournament = {
   title: string;
   start_date: string;
   end_date: string | null;
-  location: string | null;
-  address: string | null;
+  locality: string | null;
   participating_teams: string | null;
   fee: number | null;
   fee_mode: FeeMode | null;
@@ -25,8 +24,7 @@ export type TournamentInput = {
   title: string;
   start_date: string;
   end_date: string | null;
-  location: string | null;
-  address: string | null;
+  locality: string | null;
   participating_teams: string | null;
   fee: number | null;
   fee_mode: FeeMode | null;

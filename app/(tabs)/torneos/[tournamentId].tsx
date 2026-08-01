@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../../src/components/AppButton';
 import { DetailRow, DetailSection } from '../../../src/components/DetailView';
@@ -11,6 +11,11 @@ import { StatusBadge } from '../../../src/components/StatusBadge';
 import { TournamentEventForm } from '../../../src/components/TournamentEventForm';
 import { listMatchesForTournament, type Match } from '../../../src/db/supabase/matches';
 import { listPlayers, type Player } from '../../../src/db/supabase/players';
+import {
+  deleteTournamentClub,
+  listTournamentClubs,
+  type TournamentClub,
+} from '../../../src/db/supabase/tournamentClubs';
 import {
   deleteTournament,
   getTournament,
@@ -35,6 +40,7 @@ export default function TorneoDetalleScreen() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [clubs, setClubs] = useState<TournamentClub[]>([]);
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,16 +54,18 @@ export default function TorneoDetalleScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [t, matchList, playerList, attendees] = await Promise.all([
+      const [t, matchList, playerList, attendees, clubList] = await Promise.all([
         getTournament(tournamentId),
         listMatchesForTournament(tournamentId),
         listPlayers(teamId),
         listTournamentAttendeeIds(tournamentId),
+        listTournamentClubs(tournamentId),
       ]);
       setTournament(t);
       setMatches(matchList);
       setPlayers(playerList);
       setAttendeeIds(new Set(attendees));
+      setClubs(clubList);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos cargar el torneo.');
     } finally {
@@ -112,6 +120,29 @@ export default function TorneoDetalleScreen() {
     }
   }
 
+  function handleOpenClubMaps(address: string) {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    Linking.openURL(url);
+  }
+
+  function confirmDeleteClub(club: TournamentClub) {
+    Alert.alert(
+      'Eliminar club',
+      `¿Seguro que querés eliminar "${club.name}"? Los partidos que lo tenían cargado quedan sin sede asignada.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteTournamentClub(club.id);
+            await load();
+          },
+        },
+      ]
+    );
+  }
+
   function handleShare() {
     if (!tournament) return;
     const message =
@@ -120,7 +151,7 @@ export default function TorneoDetalleScreen() {
         tournament.title,
         tournament.start_date,
         tournament.end_date,
-        tournament.location ?? ''
+        tournament.locality ?? ''
       );
 
     if (!tournament.flyer_url) {
@@ -185,8 +216,7 @@ export default function TorneoDetalleScreen() {
             title: tournament.title,
             start_date: tournament.start_date,
             end_date: tournament.end_date,
-            location: tournament.location,
-            address: tournament.address,
+            locality: tournament.locality,
             participating_teams: tournament.participating_teams,
             fee: tournament.fee,
             is_paid: tournament.is_paid,
@@ -227,8 +257,7 @@ export default function TorneoDetalleScreen() {
 
           <DetailSection>
             <DetailRow label="Fecha" value={formatDateRange(tournament.start_date, tournament.end_date)} />
-            <DetailRow label="Lugar" value={tournament.location} />
-            <DetailRow label="Dirección" value={tournament.address} />
+            <DetailRow label="Localidad" value={tournament.locality} />
             <DetailRow label="Equipos que participan" value={tournament.participating_teams} />
             <DetailRow
               label="Tarifa de inscripción"
@@ -251,6 +280,46 @@ export default function TorneoDetalleScreen() {
               disabled={sharing}
             />
           </View>
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
+            Clubes sede
+          </Text>
+          {clubs.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Todavía no cargaste clubes sede para este torneo.
+            </Text>
+          ) : (
+            clubs.map((club) => (
+              <View key={club.id} style={[styles.clubCard, { borderColor: colors.border }]}>
+                <Text style={[styles.clubName, { color: colors.text }]}>{club.name}</Text>
+                {club.address ? (
+                  <Text style={[styles.rowSub, { color: colors.textMuted }]}>{club.address}</Text>
+                ) : null}
+                <View style={styles.clubActions}>
+                  {club.address ? (
+                    <Pressable onPress={() => handleOpenClubMaps(club.address as string)}>
+                      <Text style={[styles.linkLabel, { color: colors.link }]}>Ver en Maps</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={() =>
+                      router.push({ pathname: '/torneos/club/[clubId]', params: { clubId: club.id } })
+                    }
+                  >
+                    <Text style={[styles.linkLabel, { color: colors.link }]}>Editar</Text>
+                  </Pressable>
+                  <Pressable onPress={() => confirmDeleteClub(club)}>
+                    <Text style={[styles.linkLabel, { color: colors.danger }]}>Eliminar</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))
+          )}
+          <AppButton
+            label="+ Agregar club sede"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/torneos/club/nuevo', params: { tournamentId } })}
+          />
 
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>
             Quiénes van {savingAttendees ? '(guardando...)' : `(${attendeeIds.size})`}
@@ -299,20 +368,35 @@ export default function TorneoDetalleScreen() {
             : 'Todavía no cargaste partidos para este torneo.'}
         </Text>
       }
-      renderItem={({ item }) => (
-        <Pressable
-          style={[styles.matchRow, { borderBottomColor: colors.border }]}
-          onPress={() => router.push({ pathname: '/torneos/partido/[matchId]', params: { matchId: item.id } })}
-        >
-          <Text style={[styles.rowTitle, { color: colors.text }]}>
-            {formatDate(item.match_date)}
-            {item.match_time ? ` · ${item.match_time.slice(0, 5)}` : ''} vs {item.opponent}
-          </Text>
-          <Text style={[styles.rowSub, { color: colors.textMuted }]}>
-            {item.result ?? 'Sin resultado cargado'}
-          </Text>
-        </Pressable>
-      )}
+      renderItem={({ item }) => {
+        const club = clubs.find((c) => c.id === item.club_id);
+        return (
+          <Pressable
+            style={[styles.matchRow, { borderBottomColor: colors.border }]}
+            onPress={() => router.push({ pathname: '/torneos/partido/[matchId]', params: { matchId: item.id } })}
+          >
+            <View style={styles.matchInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>
+                {formatDate(item.match_date)}
+                {item.match_time ? ` · ${item.match_time.slice(0, 5)}` : ''} vs {item.opponent}
+              </Text>
+              <Text style={[styles.rowSub, { color: colors.textMuted }]}>
+                {club ? club.name : 'Sin club asignado'}
+                {item.court_name ? ` · ${item.court_name}` : ''}
+              </Text>
+              {item.status === 'jugado' ? (
+                <Text style={[styles.rowSub, { color: colors.textMuted }]}>
+                  {item.result ?? 'Sin resultado cargado'}
+                </Text>
+              ) : null}
+            </View>
+            <StatusBadge
+              label={item.status === 'jugado' ? 'Jugado' : 'Programado'}
+              tone={item.status === 'jugado' ? 'success' : 'default'}
+            />
+          </Pressable>
+        );
+      }}
       ListFooterComponent={
         <View style={styles.footer}>
           <AppButton
@@ -347,14 +431,21 @@ const styles = StyleSheet.create({
   },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2 },
   attendeeName: { fontSize: typography.body, fontFamily: fonts.regular },
+  clubCard: { borderWidth: 1, borderRadius: radius, padding: spacing.sm, marginBottom: spacing.sm, gap: 2 },
+  clubName: { fontSize: typography.body, fontFamily: fonts.bold },
+  clubActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+  linkLabel: { fontSize: typography.caption, fontFamily: fonts.bold, minHeight: minTouchSize, textAlignVertical: 'center' },
   matchRow: {
     minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    justifyContent: 'center',
-    gap: 2,
   },
+  matchInfo: { flex: 1, gap: 2 },
   rowTitle: { fontSize: typography.body, fontFamily: fonts.bold },
   rowSub: { fontSize: typography.caption, fontFamily: fonts.regular },
   footer: { padding: spacing.lg },

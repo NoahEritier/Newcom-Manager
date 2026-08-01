@@ -9,6 +9,10 @@ type Props = {
   value: string | null; // formato 'YYYY-MM-DD'
   onChange: (value: string | null) => void;
   placeholder?: string;
+  // Sin calendario ni toggle: solo el campo de texto dd/mm/aaaa. Para casos
+  // donde el calendario molesta más de lo que ayuda (ej. fecha de fin de
+  // una liga que dura toda la temporada, muy lejos en el calendario).
+  manualOnly?: boolean;
 };
 
 function formatDate(iso: string) {
@@ -38,10 +42,10 @@ function parseMaskedDate(masked: string): string | null {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export function DateField({ value, onChange, placeholder = 'Seleccionar fecha' }: Props) {
+export function DateField({ value, onChange, placeholder = 'Seleccionar fecha', manualOnly = false }: Props) {
   const { colors } = useTheme();
   const [show, setShow] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
+  const [manualMode, setManualMode] = useState(manualOnly);
   const [manualText, setManualText] = useState(value ? formatDate(value) : '');
   const [manualError, setManualError] = useState<string | null>(null);
 
@@ -93,11 +97,13 @@ export function DateField({ value, onChange, placeholder = 'Seleccionar fecha' }
       ) : null}
 
       <View style={styles.actionsRow}>
-        <Pressable style={styles.clearButton} onPress={toggleManualMode}>
-          <Text style={[styles.clearLabel, { color: colors.link }]}>
-            {manualMode ? 'Elegir del calendario' : 'Escribir la fecha'}
-          </Text>
-        </Pressable>
+        {!manualOnly ? (
+          <Pressable style={styles.clearButton} onPress={toggleManualMode}>
+            <Text style={[styles.clearLabel, { color: colors.link }]}>
+              {manualMode ? 'Elegir del calendario' : 'Escribir la fecha'}
+            </Text>
+          </Pressable>
+        ) : null}
         {value ? (
           <Pressable
             style={styles.clearButton}
@@ -112,7 +118,7 @@ export function DateField({ value, onChange, placeholder = 'Seleccionar fecha' }
         ) : null}
       </View>
 
-      {show ? (
+      {show && !manualOnly ? (
         <DateTimePicker
           // 'T00:00:00' fuerza a que se parsee como hora local, no UTC —
           // new Date('YYYY-MM-DD') interpreta medianoche UTC, que en

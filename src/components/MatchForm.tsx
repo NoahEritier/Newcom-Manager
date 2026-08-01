@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { HomeAway, MatchInput } from '../db/supabase/matches';
+import type { HomeAway, MatchInput, MatchStatus } from '../db/supabase/matches';
+import type { TournamentClub } from '../db/supabase/tournamentClubs';
 import { fonts, spacing, typography, useTheme } from '../theme';
 import { deriveOutcome, OUTCOME_LABEL } from '../utils/tournamentResult';
 import { AppButton } from './AppButton';
@@ -11,10 +12,11 @@ import { Dropdown } from './Dropdown';
 import { TimeField } from './TimeField';
 
 // tournament_id no se edita acá: lo fija la pantalla que llama a este
-// formulario (partido suelto = null, partido de un torneo = el id del torneo).
+// formulario.
 type MatchFormValue = Omit<MatchInput, 'tournament_id'>;
 
 type Props = {
+  clubs: TournamentClub[];
   initialValue?: MatchFormValue;
   onSubmit: (input: MatchFormValue) => Promise<void>;
   submitLabel: string;
@@ -29,13 +31,19 @@ const HOME_AWAY_OPTIONS: { value: HomeAway; label: string }[] = [
   { value: 'visitante', label: 'Visitante' },
 ];
 
-export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
+const STATUS_OPTIONS: { value: MatchStatus; label: string }[] = [
+  { value: 'programado', label: 'Programado (todavía no se jugó)' },
+  { value: 'jugado', label: 'Jugado (ya tiene resultado)' },
+];
+
+export function MatchForm({ clubs, initialValue, onSubmit, submitLabel }: Props) {
   const { colors } = useTheme();
+  const [status, setStatus] = useState<MatchStatus>(initialValue?.status ?? 'programado');
   const [matchDate, setMatchDate] = useState<string | null>(initialValue?.match_date ?? todayIso());
   const [matchTime, setMatchTime] = useState<string | null>(initialValue?.match_time ?? null);
   const [opponent, setOpponent] = useState(initialValue?.opponent ?? '');
-  const [location, setLocation] = useState(initialValue?.location ?? '');
-  const [address, setAddress] = useState(initialValue?.address ?? '');
+  const [clubId, setClubId] = useState<string | null>(initialValue?.club_id ?? null);
+  const [courtName, setCourtName] = useState(initialValue?.court_name ?? '');
   const [homeAway, setHomeAway] = useState<HomeAway | null>(initialValue?.home_away ?? null);
   const [scoreOwn, setScoreOwn] = useState(
     initialValue?.score_own != null ? String(initialValue.score_own) : ''
@@ -46,8 +54,9 @@ export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const parsedOwn = scoreOwn.trim() ? parseInt(scoreOwn, 10) : null;
-  const parsedOpponent = scoreOpponent.trim() ? parseInt(scoreOpponent, 10) : null;
+  const isPlayed = status === 'jugado';
+  const parsedOwn = isPlayed && scoreOwn.trim() ? parseInt(scoreOwn, 10) : null;
+  const parsedOpponent = isPlayed && scoreOpponent.trim() ? parseInt(scoreOpponent, 10) : null;
   const outcome = deriveOutcome(parsedOwn, parsedOpponent);
 
   async function handleSubmit() {
@@ -64,11 +73,12 @@ export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
     setLoading(true);
     try {
       await onSubmit({
+        status,
         match_date: matchDate,
         match_time: matchTime,
         opponent: trimmedOpponent,
-        location: location.trim() || null,
-        address: address.trim() || null,
+        club_id: clubId,
+        court_name: courtName.trim() || null,
         home_away: homeAway,
         score_own: parsedOwn,
         score_opponent: parsedOpponent,
@@ -87,6 +97,14 @@ export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
+      <Text style={[styles.label, { color: colors.textMuted }]}>Estado del partido</Text>
+      <Dropdown
+        value={status}
+        options={STATUS_OPTIONS}
+        onChange={(v) => setStatus(v as MatchStatus)}
+        title="Estado del partido"
+      />
+
       <View style={styles.row}>
         <View style={styles.rowField}>
           <Text style={[styles.label, { color: colors.textMuted }]}>Fecha</Text>
@@ -110,33 +128,49 @@ export function MatchForm({ initialValue, onSubmit, submitLabel }: Props) {
         title="Local o visitante"
       />
 
-      <Text style={[styles.label, { color: colors.textMuted }]}>Lugar</Text>
-      <AppTextInput value={location} onChangeText={setLocation} placeholder="Nombre de la cancha" />
+      <Text style={[styles.label, { color: colors.textMuted }]}>Club sede</Text>
+      {clubs.length === 0 ? (
+        <Text style={[styles.hint, { color: colors.textMuted }]}>
+          Este torneo todavía no tiene clubes cargados — agregalos desde su pantalla de detalle.
+        </Text>
+      ) : (
+        <Dropdown
+          value={clubId ?? ''}
+          options={[{ value: '', label: 'Sin especificar' }, ...clubs.map((c) => ({ value: c.id, label: c.name }))]}
+          onChange={(v) => setClubId(v || null)}
+          placeholder="Sin especificar"
+          title="Club sede"
+        />
+      )}
 
-      <Text style={[styles.label, { color: colors.textMuted }]}>Dirección (para abrir en Maps)</Text>
-      <AppTextInput value={address} onChangeText={setAddress} placeholder="Dirección completa" />
+      <Text style={[styles.label, { color: colors.textMuted }]}>Cancha (opcional)</Text>
+      <AppTextInput value={courtName} onChangeText={setCourtName} placeholder="Ej: Cancha 2" />
 
-      <Text style={[styles.label, { color: colors.textMuted }]}>Marcador (después del partido)</Text>
-      <View style={styles.row}>
-        <View style={styles.rowField}>
-          <AppTextInput
-            value={scoreOwn}
-            onChangeText={setScoreOwn}
-            placeholder="Nosotros"
-            keyboardType="number-pad"
-          />
-        </View>
-        <View style={styles.rowField}>
-          <AppTextInput
-            value={scoreOpponent}
-            onChangeText={setScoreOpponent}
-            placeholder="Rival"
-            keyboardType="number-pad"
-          />
-        </View>
-      </View>
-      {outcome ? (
-        <Text style={[styles.outcome, { color: colors.text }]}>Resultado: {OUTCOME_LABEL[outcome]}</Text>
+      {isPlayed ? (
+        <>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Marcador</Text>
+          <View style={styles.row}>
+            <View style={styles.rowField}>
+              <AppTextInput
+                value={scoreOwn}
+                onChangeText={setScoreOwn}
+                placeholder="Nosotros"
+                keyboardType="number-pad"
+              />
+            </View>
+            <View style={styles.rowField}>
+              <AppTextInput
+                value={scoreOpponent}
+                onChangeText={setScoreOpponent}
+                placeholder="Rival"
+                keyboardType="number-pad"
+              />
+            </View>
+          </View>
+          {outcome ? (
+            <Text style={[styles.outcome, { color: colors.text }]}>Resultado: {OUTCOME_LABEL[outcome]}</Text>
+          ) : null}
+        </>
       ) : null}
 
       {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
@@ -163,6 +197,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', gap: spacing.md },
   rowField: { flex: 1 },
+  hint: { fontSize: typography.caption, fontFamily: fonts.regular },
   outcome: { fontSize: typography.body, fontFamily: fonts.bold, marginTop: spacing.sm },
   error: { fontSize: typography.caption, fontFamily: fonts.regular, marginTop: spacing.md },
   spacer: { height: spacing.md },

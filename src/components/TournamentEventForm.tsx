@@ -36,8 +36,7 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
   const [title, setTitle] = useState(initialValue?.title ?? '');
   const [startDate, setStartDate] = useState<string | null>(initialValue?.start_date ?? todayIso());
   const [endDate, setEndDate] = useState<string | null>(initialValue?.end_date ?? null);
-  const [location, setLocation] = useState(initialValue?.location ?? '');
-  const [address, setAddress] = useState(initialValue?.address ?? '');
+  const [locality, setLocality] = useState(initialValue?.locality ?? '');
   const [participatingTeams, setParticipatingTeams] = useState(initialValue?.participating_teams ?? '');
   const [fee, setFee] = useState(initialValue?.fee != null ? String(initialValue.fee) : '');
   const [feeMode, setFeeMode] = useState<FeeMode | null>(initialValue?.fee_mode ?? null);
@@ -51,7 +50,7 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
   const [uploadingFlyer, setUploadingFlyer] = useState(false);
   const [flyerError, setFlyerError] = useState<string | null>(null);
   const [whatsappMessage, setWhatsappMessage] = useState(
-    initialValue?.whatsapp_message ?? defaultTournamentWhatsappMessage(title, startDate ?? todayIso(), endDate, location)
+    initialValue?.whatsapp_message ?? defaultTournamentWhatsappMessage(title, startDate ?? todayIso(), endDate, locality)
   );
   const [messageTouched, setMessageTouched] = useState(initialValue?.whatsapp_message != null);
   const [loading, setLoading] = useState(false);
@@ -64,8 +63,8 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
   // sincronizado con los datos del torneo — apenas lo toca, dejamos de tocarlo.
   useEffect(() => {
     if (messageTouched) return;
-    setWhatsappMessage(defaultTournamentWhatsappMessage(title, startDate ?? todayIso(), endDate, location));
-  }, [title, startDate, endDate, location, messageTouched]);
+    setWhatsappMessage(defaultTournamentWhatsappMessage(title, startDate ?? todayIso(), endDate, locality));
+  }, [title, startDate, endDate, locality, messageTouched]);
 
   function handleMessageChange(text: string) {
     setMessageTouched(true);
@@ -129,8 +128,7 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
         title: trimmedTitle,
         start_date: startDate,
         end_date: endDate,
-        location: isLeague ? null : location.trim() || null,
-        address: isLeague ? null : address.trim() || null,
+        locality: locality.trim() || null,
         participating_teams: participatingTeams.trim() || null,
         fee: Number.isFinite(parsedFee) ? parsedFee : null,
         fee_mode: feeMode,
@@ -184,7 +182,7 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
           <Text style={[styles.label, { color: colors.textMuted }]}>
             {isLeague ? 'Fin de la temporada (opcional)' : 'Fecha de fin (opcional)'}
           </Text>
-          <DateField value={endDate} onChange={setEndDate} placeholder="Si dura más de un día" />
+          <DateField value={endDate} onChange={setEndDate} placeholder="dd/mm/aaaa" manualOnly />
         </View>
       </View>
       {dateRangeInvalid ? (
@@ -193,20 +191,13 @@ export function TournamentEventForm({ teamId, initialValue, onSubmit, submitLabe
         </Text>
       ) : null}
 
-      {isLeague ? (
-        <Text style={[styles.hint, { color: colors.textMuted }]}>
-          Cada jornada de la liga se juega en su propia cancha/localidad — el lugar y la
-          dirección se cargan partido por partido, no acá.
-        </Text>
-      ) : (
-        <>
-          <Text style={[styles.label, { color: colors.textMuted }]}>Lugar</Text>
-          <AppTextInput value={location} onChangeText={setLocation} placeholder="Nombre del predio/cancha" />
+      <Text style={[styles.label, { color: colors.textMuted }]}>Localidad</Text>
+      <AppTextInput value={locality} onChangeText={setLocality} placeholder="Ej: Mar del Plata" />
 
-          <Text style={[styles.label, { color: colors.textMuted }]}>Dirección (para abrir en Maps)</Text>
-          <AppTextInput value={address} onChangeText={setAddress} placeholder="Dirección completa" />
-        </>
-      )}
+      <Text style={[styles.hint, { color: colors.textMuted }]}>
+        Los clubes sede (nombre y dirección) se cargan desde la pantalla de detalle del torneo,
+        una vez guardado.
+      </Text>
 
       <Text style={[styles.label, { color: colors.textMuted }]}>Equipos que participan</Text>
       <AppTextInput

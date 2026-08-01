@@ -213,9 +213,9 @@ export default function TorneosScreen() {
             <Text style={[styles.cardSub, { color: colors.textMuted }]}>
               {formatDateRange(item.start_date, item.end_date)}
             </Text>
-            {item.location ? (
+            {item.locality ? (
               <Text style={[styles.cardSub, { color: colors.textMuted }]} numberOfLines={1}>
-                {item.location}
+                {item.locality}
               </Text>
             ) : null}
             <View style={styles.badgeRow}>

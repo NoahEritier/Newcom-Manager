@@ -1,6 +1,7 @@
 import { supabase } from './client';
 
 export type HomeAway = 'local' | 'visitante';
+export type MatchStatus = 'programado' | 'jugado';
 
 export type Match = {
   id: string;
@@ -9,8 +10,9 @@ export type Match = {
   match_date: string;
   match_time: string | null;
   opponent: string;
-  location: string | null;
-  address: string | null;
+  club_id: string | null;
+  court_name: string | null;
+  status: MatchStatus;
   home_away: HomeAway | null;
   score_own: number | null;
   score_opponent: number | null;
@@ -23,8 +25,9 @@ export type MatchInput = {
   match_date: string;
   match_time: string | null;
   opponent: string;
-  location: string | null;
-  address: string | null;
+  club_id: string | null;
+  court_name: string | null;
+  status: MatchStatus;
   home_away: HomeAway | null;
   score_own: number | null;
   score_opponent: number | null;
